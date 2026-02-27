@@ -1,0 +1,5 @@
+hoyolab.json
+*.log
+__pycache__/
+.env
+config.py
