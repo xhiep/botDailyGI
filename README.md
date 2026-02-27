@@ -1,10 +1,15 @@
 bot.py — Telegram Bot điều khiển HoYoLab trực tiếp từ điện thoại
 Chạy: python bot.py
 
+
 Lệnh hỗ trợ:
+
 /status — kiểm tra bot còn sống + trạng thái cookie
+
 /uid — lấy UID và nickname tài khoản
+
 /checkin — điểm danh HoYoLAB ngay
+
 /redeem ABC — đổi 1 gift code
 /redeemall — đổi toàn bộ code trong codes.txt
 /characters — xem danh sách nhân vật
