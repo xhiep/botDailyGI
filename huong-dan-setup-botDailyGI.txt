@@ -1,0 +1,195 @@
+================================================================
+   HƯỚNG DẪN CÀI ĐẶT botDailyGI CHẠY TỰ ĐỘNG TRÊN LINUX
+================================================================
+
+Hệ điều hành: Arch Linux (hoặc tương tự)
+Shell: fish hoặc bash
+Thư mục bot: /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux
+
+
+----------------------------------------------------------------
+BƯỚC 1: CÀI ĐẶT THƯ VIỆN CẦN THIẾT
+----------------------------------------------------------------
+
+# Cài python và xvfb
+sudo pacman -S python python-pip python-requests xorg-server-xvfb
+
+# Kiểm tra python path (dùng kết quả này cho ExecStart= ở Bước 4)
+which python || which python3
+
+# Cài thư viện python
+pip install requests playwright --break-system-packages
+
+# Cài trình duyệt cho playwright
+python -m playwright install chromium
+
+
+----------------------------------------------------------------
+BƯỚC 2: TẠO FILE config.py
+----------------------------------------------------------------
+
+nano /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux/config.py
+
+Điền nội dung sau:
+
+    HOYOLAB_FILE       = "hoyolab.json"
+    TELEGRAM_BOT_TOKEN = "token_của_bạn"       # lấy từ @BotFather
+    TELEGRAM_CHAT_ID   = "chat_id_của_bạn"     # lấy từ @userinfobot
+    HOYOLAB_USER       = "email_hoặc_username"
+    HOYOLAB_PASS       = "mật_khẩu"
+
+Lưu: Ctrl+O → Enter → Ctrl+X
+
+⚠️ Phải tạo config.py TRƯỚC khi chạy bất kỳ lệnh nào khác!
+
+
+----------------------------------------------------------------
+BƯỚC 3: ĐĂNG NHẬP LẦN ĐẦU ĐỂ LẤY COOKIE
+----------------------------------------------------------------
+
+cd /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux
+python login.py
+
+- Trình duyệt tự mở → click ô Username (tự điền)
+- Click ô Password (tự điền)
+- Giải Captcha → nhấn Log In
+- Sau khi đăng nhập xong → nhấn Enter trong terminal
+- File hoyolab.json sẽ được tạo tự động trong thư mục bot
+
+Kiểm tra cookie đã tạo chưa:
+    ls -la /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux/hoyolab.json
+
+
+----------------------------------------------------------------
+BƯỚC 4: TẠO USER SERVICE
+----------------------------------------------------------------
+
+⚠️ Dùng USER SERVICE (không cần sudo) để browser hiện ra màn hình
+   khi cần đăng nhập lại qua lệnh /login trên Telegram.
+
+Tạo thư mục service:
+
+    mkdir -p ~/.config/systemd/user/
+
+Tạo file service:
+
+    nano ~/.config/systemd/user/botdailygi.service
+
+Dán nội dung sau:
+
+    [Unit]
+    Description=botDailyGI Telegram Bot
+    After=network.target
+
+    [Service]
+    Type=simple
+    WorkingDirectory=/run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux
+    ExecStart=/usr/bin/python /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/botDailyGI-linux/bot.py
+    Restart=on-failure
+    RestartSec=10
+
+    [Install]
+    WantedBy=default.target
+
+Lưu: Ctrl+O → Enter → Ctrl+X
+
+💡 Nếu "which python" ở Bước 1 trả về "python3" thì đổi ExecStart thành:
+   ExecStart=/usr/bin/python3 /run/media/.../bot.py
+
+
+----------------------------------------------------------------
+BƯỚC 5: BẬT LINGER (chạy kể cả khi chưa đăng nhập vào máy)
+----------------------------------------------------------------
+
+    sudo loginctl enable-linger xhiep
+
+Kiểm tra đã bật chưa:
+    loginctl show-user xhiep | grep Linger
+    # Kết quả: Linger=yes là OK
+
+
+----------------------------------------------------------------
+BƯỚC 6: KÍCH HOẠT VÀ CHẠY SERVICE
+----------------------------------------------------------------
+
+    systemctl --user daemon-reload
+    systemctl --user enable botdailygi
+    systemctl --user start botdailygi
+
+
+----------------------------------------------------------------
+BƯỚC 7: KIỂM TRA TRẠNG THÁI
+----------------------------------------------------------------
+
+Xem trạng thái:
+    systemctl --user status botdailygi
+
+Xem log realtime:
+    journalctl --user -u botdailygi -f
+
+Bot chạy OK sẽ thấy tin nhắn Telegram: "🤖 Bot đã khởi động!"
+Kiểm tra thêm bằng cách gửi /status trên Telegram.
+
+
+----------------------------------------------------------------
+CÁC LỆNH QUẢN LÝ SERVICE (DÙNG HÀNG NGÀY)
+----------------------------------------------------------------
+
+Khởi động lại:  systemctl --user restart botdailygi
+Dừng bot:       systemctl --user stop botdailygi
+Tắt autostart:  systemctl --user disable botdailygi
+Xem log:        journalctl --user -u botdailygi -f --no-pager
+
+Reload sau khi sửa bot.py:
+    systemctl --user restart botdailygi
+
+Reload sau khi sửa file .service:
+    systemctl --user daemon-reload
+    systemctl --user restart botdailygi
+
+
+----------------------------------------------------------------
+XỬ LÝ KHI Ổ EXTERNAL BỊ NGẮT / CẮM LẠI
+----------------------------------------------------------------
+
+Bot sẽ dừng nếu ổ USB/external bị rút ra. Sau khi cắm lại:
+
+1. Kiểm tra ổ đã mount chưa:
+    ls /run/media/xhiep/bf2dad1b-73b7-4e7e-a750-ea84f6dae295/
+
+2. Nếu đã mount → restart bot:
+    systemctl --user restart botdailygi
+
+3. Nếu chưa mount → mount thủ công rồi restart:
+    udisksctl mount -b /dev/sdXY   # thay sdXY bằng tên ổ thực tế
+    systemctl --user restart botdailygi
+
+Tìm tên ổ:
+    lsblk
+
+
+----------------------------------------------------------------
+ĐĂNG NHẬP LẠI KHI COOKIE HẾT HẠN (qua Telegram)
+----------------------------------------------------------------
+
+1. Gửi /login → bot mở trình duyệt trên màn hình
+2. Click Username → tự điền
+   Click Password → tự điền
+   Giải Captcha → nhấn Log In
+3. Gửi /logindone → bot lưu cookie
+4. Gửi /status để xác nhận cookie hợp lệ
+
+💡 Nếu không thấy cửa sổ browser → kết nối VNC tới máy port 5900
+
+
+----------------------------------------------------------------
+LƯU Ý QUAN TRỌNG
+----------------------------------------------------------------
+
+✅ Luôn dùng "systemctl --user" (KHÔNG có sudo) → user service
+✅ file hoyolab.json và config.py phải cùng thư mục với bot.py
+✅ Linger phải được bật để bot chạy khi chưa login vào máy
+⚠️ Nếu ổ external bị ngắt → bot dừng, cắm lại và restart thủ công
+⚠️ Cookie HoYoLAB thường hết hạn sau vài tuần → dùng /login để gia hạn
+
+================================================================

@@ -1,0 +1,81 @@
+﻿        except: pass
+
+    send(chat_id, "🌐 Đang mở trình duyệt...\n⏳ Chờ 10-20 giây để browser khởi động.")
+    try:
+        env = os.environ.copy()
+        if not IS_WINDOWS:
+            # Dùng màn hình desktop thực, không dùng Xvfb ẩn
+            env.setdefault("DISPLAY", ":0")
+        if IS_WINDOWS:
+            python_exe = sys.executable.replace("pythonw.exe","python.exe").replace("pythonw","python")
+            log_file = os.path.join(tempfile.gettempdir(), f"login_log_{chat_id}.txt")
+            log_fh   = open(log_file, "w", encoding="utf-8")
+            proc = subprocess.Popen(
+                [python_exe, "-u", login_script],
+                stdin=subprocess.PIPE,
+                stdout=log_fh, stderr=log_fh,
+                text=True, encoding="utf-8", errors="replace",
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                env=env,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+            proc._log_file = log_fh
+            proc._log_path = log_file
+        else:
+            python_exe = sys.executable
+            proc = subprocess.Popen(
+                [python_exe, "-u", login_script],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=0, encoding="utf-8", errors="replace",
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                env=env,
+            )
+        _LOGIN_PROCS[chat_id] = proc
+        ready_event = threading.Event()
+
+        def _reader():
+            if IS_WINDOWS and hasattr(proc, "_log_path"):
+                lp = proc._log_path; seen = 0
+                while proc.poll() is None or seen == 0:
+                    try:
+                        with open(lp, "r", encoding="utf-8", errors="replace") as f:
+                            f.seek(seen); new = f.read()
+                            if new:
+                                seen += len(new)
+                                for line in new.splitlines():
+                                    print(f"[login.py] {line.rstrip()}")
+                                    if any(k in line for k in ("San sang", "TU DONG", "nhan Enter")):
+                                        ready_event.set()
+                                    if "LOGIN_SUCCESS" in line:
+                                        ready_event.set()
+                                        _CMD_EXEC.submit(_finish_login, chat_id)
+                                        return
+                                    if "TIMEOUT" in line:
+                                        send(chat_id, "⏰ Quá 10 phút không phát hiện đăng nhập.\n💡 Thử lại /login")
+                                        _LOGIN_PROCS.pop(chat_id, None); return
+                    except Exception: pass
+                    time.sleep(0.5)
+            else:
+                for raw in proc.stdout:
+                    line = raw.rstrip()
+                    print(f"[login.py] {line}")
+                    if any(k in line for k in ("San sang", "TU DONG", "nhan Enter")):
+                        ready_event.set()
+                    if "LOGIN_SUCCESS" in line:
+                        ready_event.set()
+                        _CMD_EXEC.submit(_finish_login, chat_id)
+                        return
+                    if "TIMEOUT" in line:
+                        send(chat_id, "⏰ Quá 10 phút không phát hiện đăng nhập.\n💡 Thử lại /login")
+                        _LOGIN_PROCS.pop(chat_id, None); return
+
+        threading.Thread(target=_reader, daemon=True).start()
+        got_ready = ready_event.wait(timeout=60)
+
+        if proc.poll() is not None:
+            _LOGIN_PROCS.pop(chat_id, None)
+            send(chat_id, "❌ login.py thoát sớm\n💡 Kiểm tra playwright:\npip install playwright\npython -m playwright install chromium"); return
+
+        if got_ready:
+            send(chat_id,
+                 "✅ Trình duyệt đã mở!\n"

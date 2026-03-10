@@ -2,30 +2,113 @@
 """
 login.py — Mở browser, tự điền user/pass vào iframe HoYoLAB, chờ captcha.
 Chạy độc lập hoặc qua subprocess từ bot.py.
+Hỗ trợ: Windows 11, Linux (có X11 hoặc Xvfb qua systemd).
 """
 import sys
-import io
-
-# Fix encoding cho Windows (cp1252 không hỗ trợ emoji/tiếng Việt)
-if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf-8-sig"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-
+import os
+import subprocess
+import time
 import config
 
 USER = config.HOYOLAB_USER
 PASS = config.HOYOLAB_PASS
 
+IS_WINDOWS = sys.platform == "win32"
+
+# Nếu bot.py truyền HEADLESS=1 → chạy hoàn toàn không cần X server
+HEADLESS_MODE = os.environ.get("HEADLESS", "0") == "1"
+
+# ── Phát hiện và khởi động display (chỉ Linux, chỉ khi không headless) ──────
+_xvfb_proc = None
+_vnc_proc   = None
+
+def _ensure_display():
+    """Đảm bảo có DISPLAY (chỉ cần trên Linux, chỉ khi HEADLESS_MODE=False).
+    Trả về True nếu đã tự tạo Xvfb (cần dọn dẹp sau)."""
+    global _xvfb_proc, _vnc_proc
+
+    if IS_WINDOWS or HEADLESS_MODE:
+        return False
+
+    # Đã có display thật → dùng luôn
+    if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+        print("[login] Dùng display hiện có:", os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"), flush=True)
+        return False
+
+    # Thử dùng :0 của user đang login
+    os.environ["DISPLAY"] = ":0"
+    try:
+        result = subprocess.run(["xdpyinfo", "-display", ":0"],
+                                capture_output=True, timeout=3)
+        if result.returncode == 0:
+            print("[login] Dùng DISPLAY=:0 (X11 user session)", flush=True)
+            return False
+    except Exception:
+        pass
+
+    # Không có X11 → khởi động Xvfb trên :99
+    print("[login] Không có X11 display — khởi động Xvfb trên :99", flush=True)
+    try:
+        _xvfb_proc = subprocess.Popen(
+            ["Xvfb", ":99", "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        time.sleep(1.5)
+        os.environ["DISPLAY"] = ":99"
+        print("[login] Xvfb khởi động OK — DISPLAY=:99", flush=True)
+    except FileNotFoundError:
+        print("[login] ❌ Xvfb không được cài! Chạy: sudo apt install xvfb", flush=True)
+        sys.exit(1)
+
+    # Khởi động x11vnc để xem từ xa (port 5900)
+    try:
+        _vnc_proc = subprocess.Popen(
+            ["x11vnc", "-display", ":99", "-nopw", "-forever", "-quiet",
+             "-rfbport", "5900"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        print("[login] x11vnc đang chạy tại port 5900 — kết nối VNC để thấy browser", flush=True)
+    except FileNotFoundError:
+        print("[login] ⚠️  x11vnc không có — không xem được qua VNC", flush=True)
+        print("[login]    Cài bằng: sudo apt install x11vnc", flush=True)
+
+    return True  # dùng Xvfb
+
+_used_xvfb = _ensure_display()
+
+if HEADLESS_MODE:
+    print("[login] Chạy chế độ HEADLESS (không cần X server)", flush=True)
+
 from playwright.sync_api import sync_playwright
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(
-        headless=False,
-        args=["--start-maximized", "--disable-blink-features=AutomationControlled"]
-    )
-    context = browser.new_context(no_viewport=True)
+# ── Chọn User-Agent theo nền tảng ───────────────────────────
+if IS_WINDOWS:
+    _UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+else:
+    _UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-    # Script inject tự điền — hook cả iframe
+with sync_playwright() as p:
+    _launch_args = ["--disable-blink-features=AutomationControlled",
+                    "--no-sandbox", "--disable-dev-shm-usage"]
+    
+    # ── Tối ưu cho Arch Linux (Wayland native) ────────────────────────
+    if not IS_WINDOWS and os.environ.get("WAYLAND_DISPLAY"):
+        _launch_args.extend(["--ozone-platform-hint=auto", "--enable-wayland-ime"])
+
+    if not HEADLESS_MODE:
+        _launch_args.append("--start-maximized")
+
+    browser = p.chromium.launch(
+        headless=HEADLESS_MODE,
+        args=_launch_args
+    )
+    _viewport = {"width": 1920, "height": 1080} if HEADLESS_MODE else None
+    context = browser.new_context(
+        no_viewport=not HEADLESS_MODE,
+        viewport=_viewport,
+        user_agent=_UA
+    )
+
     context.add_init_script(f"""
         const _orig = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
 
@@ -56,10 +139,8 @@ with sync_playwright() as p:
     page.goto("https://www.hoyolab.com/home", wait_until="domcontentloaded")
     page.wait_for_timeout(3000)
 
-    # ── Tìm và click nút "Log In" ─────────────────────────────────────────────
     clicked = False
 
-    # Cách 1: click trực tiếp (nếu không bị iframe chặn)
     try:
         btn = page.locator('button:has-text("Log In"), a:has-text("Log In"), '
                            '[class*="login"]:has-text("Log In")').first
@@ -70,7 +151,6 @@ with sync_playwright() as p:
     except Exception:
         pass
 
-    # Cách 2: dùng JavaScript click (bypass iframe intercept)
     if not clicked:
         try:
             page.evaluate("""
@@ -90,9 +170,7 @@ with sync_playwright() as p:
     if not clicked:
         print("[login] Khong tu click duoc - hay tu click nut Log In tren browser", flush=True)
 
-    # ── Chờ iframe login xuất hiện rồi inject vào bên trong ──────────────────
     try:
-        # Chờ iframe account xuất hiện
         page.wait_for_selector("#hyv-account-frame, iframe[src*='account.hoyolab']",
                                 timeout=15000)
         page.wait_for_timeout(1000)
@@ -103,16 +181,44 @@ with sync_playwright() as p:
     print("", flush=True)
     print("[login] San sang! Click vao o Username roi Password de tu dien.", flush=True)
     print("[login] Giai Captcha va nhan Log In.", flush=True)
-    print("[login] Sau khi dang nhap xong, nhan Enter de luu cookie...", flush=True)
+    print("[login] Bot se TU DONG luu cookie khi phat hien dang nhap thanh cong.", flush=True)
     sys.stdout.flush()
 
-    # Chờ Enter (từ terminal hoặc stdin của bot.py)
-    try:
-        input()
-    except EOFError:
-        # Khi chạy qua subprocess với stdin pipe, EOFError = nhận được \n
-        pass
+    # ── Tự động phát hiện đăng nhập qua cookie ──────────────────────────────
+    # Poll mỗi 2 giây tối đa 10 phút — khi thấy ltoken_v2 + ltuid_v2 là OK
+    POLL_INTERVAL = 2
+    MAX_WAIT_SEC  = 600   # 10 phút
+    saved = False
+    for _ in range(MAX_WAIT_SEC // POLL_INTERVAL):
+        try:
+            clist = context.cookies()
+            cmap  = {c["name"]: c["value"] for c in clist}
+            if "ltoken_v2" in cmap and "ltuid_v2" in cmap:
+                context.storage_state(path=config.HOYOLAB_FILE)
+                print(f"[login] LOGIN_SUCCESS Da luu cookie vao {config.HOYOLAB_FILE}", flush=True)
+                saved = True
+                break
+        except Exception as e:
+            err_lower = str(e).lower()
+            # Playwright báo browser/context bị đóng → thoát ngay, đừng chờ tiếp
+            if any(k in err_lower for k in ("closed", "disconnected", "crashed",
+                                             "target page", "browser has been")):
+                print("[login] BROWSER_CLOSED Browser bi dong truoc khi dang nhap.", flush=True)
+                saved = True   # đánh dấu "đã xử lý" để không in TIMEOUT
+                break
+            print(f"[login] poll error: {e}", flush=True)
+        time.sleep(POLL_INTERVAL)
 
-    context.storage_state(path=config.HOYOLAB_FILE)
+    if not saved:
+        print("[login] TIMEOUT Het 10 phut, khong phat hien dang nhap thanh cong.", flush=True)
+
     browser.close()
-    print(f"[login] Da luu cookie vao {config.HOYOLAB_FILE}", flush=True)
+
+# Dọn dẹp Xvfb / VNC nếu đã tự tạo
+if _used_xvfb:
+    if _vnc_proc:
+        try: _vnc_proc.terminate()
+        except: pass
+    if _xvfb_proc:
+        try: _xvfb_proc.terminate()
+        except: pass
