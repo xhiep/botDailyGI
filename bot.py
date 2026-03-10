@@ -11,6 +11,7 @@ Thiết kế thread:
 import hashlib, json, random, requests, datetime, time
 import os, re, socket, string, sys, threading, subprocess, logging, tempfile
 from config import HOYOLAB_FILE, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+import lang
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -116,7 +117,7 @@ def _base_headers(cookie_str: str) -> dict:
 # ─────────────────────────────────────────
 # TELEGRAM HELPERS
 # ─────────────────────────────────────────
-def send(chat_id, text: str):
+def _send(chat_id, text: str):
     try:
         s = text if isinstance(text, str) else str(text)
         MAX_LEN = 4000
@@ -133,7 +134,7 @@ def send(chat_id, text: str):
             s = s[cut_at:].lstrip()  # Bỏ khoảng trắng thừa đầu dòng tiếp theo
     except Exception as e:
         log.warning(f"[send] Lỗi gửi Telegram (chat={chat_id}): {e}")
-def send_with_buttons(chat_id, text: str, buttons: list):
+def _send_with_buttons(chat_id, text: str, buttons: list):
     """Gửi tin nhắn kèm inline keyboard.
     buttons: [[{"text":"✅ Xác nhận","callback_data":"yes_shutdown"}], ...]
     """
@@ -147,14 +148,23 @@ def send_with_buttons(chat_id, text: str, buttons: list):
                    timeout=10)
     except Exception as e:
         log.warning(f"[send_with_buttons] Lỗi gửi inline keyboard (chat={chat_id}): {e}")
-def answer_callback(callback_id: str, text: str = ""):
+def _answer_callback(callback_id: str, text: str = ""):
     """Trả lời callback_query để Telegram tắt loading spinner."""
     try:
         _HTTP.post(f"{BASE_URL}/answerCallbackQuery",
                    json={"callback_query_id": callback_id, "text": text},
                    timeout=5)
     except Exception as e:
-        log.warning(f"[answer_callback] Lỗi trả lời callback {callback_id}: {e}")
+        log.warning(f"[_answer_callback] Lỗi trả lời callback {callback_id}: {e}")
+
+def send(chat_id, text: str):
+    return lang.t_send(chat_id, text, _send)
+
+def send_with_buttons(chat_id, text: str, buttons: list):
+    return lang.t_send_with_buttons(chat_id, text, buttons, _send_with_buttons)
+
+def answer_callback(callback_id: str, text: str = "", chat_id=None):
+    return lang.t_answer_callback(callback_id, text, _answer_callback, chat_id)
 def send_photo(chat_id, photo_path, caption=""):
     try:
         with open(photo_path, "rb") as f:
@@ -1337,6 +1347,17 @@ def cmd_logindone(chat_id):
     _finish_login(chat_id)
 
 
+# ── /start ───────────────────────────────
+def cmd_start(chat_id):
+    msg = (
+        "👋 Welcome to botDailyGI! / Chào mừng đến với botDailyGI!\n\n"
+        "🌐 Please select your language / Vui lòng chọn ngôn ngữ:"
+    )
+    send_with_buttons(chat_id, msg, [
+        [{"text": "🇬🇧 English", "callback_data": "lang_en"}],
+        [{"text": "🇻🇳 Tiếng Việt", "callback_data": "lang_vi"}]
+    ])
+
 # ── /help ────────────────────────────────
 def cmd_help(chat_id):
     send(chat_id, (
@@ -1793,7 +1814,7 @@ def handle(chat_id, text):
         "/logindone":       (cmd_logindone,       ()),
         "/logincancel":     (cmd_logincancel,     ()),
         "/help":            (cmd_help,            ()),
-        "/start":           (cmd_help,            ()),
+        "/start":           (cmd_start,           ()),
     }
     if cmd in dispatch:
         fn, args = dispatch[cmd]
@@ -1806,10 +1827,16 @@ def handle(chat_id, text):
 def handle_callback(callback_id: str, chat_id, data: str):
     """Xử lý callback từ inline keyboard buttons."""
     if str(chat_id) != str(TELEGRAM_CHAT_ID):
-        answer_callback(callback_id, "⛔ Không có quyền")
+        answer_callback(callback_id, "⛔ Không có quyền", chat_id=chat_id)
+        return
+    if data.startswith("lang_"):
+        l = data.split("_")[1]
+        lang.set_lang(chat_id, l)
+        answer_callback(callback_id, f"✅ Language set to {l.upper()}", chat_id=chat_id)
+        cmd_help(chat_id)
         return
     if data == "confirm_shutdown":
-        answer_callback(callback_id, "⚠️ Đang tắt máy...")
+        answer_callback(callback_id, "⚠️ Đang tắt máy...", chat_id=chat_id)
         send(chat_id, "⚠️ Đang tắt máy sau 60 giây...\nDùng /cancel để huỷ.")
         try:
             if IS_WINDOWS: subprocess.Popen(["shutdown","/s","/t","60"])
@@ -1817,7 +1844,7 @@ def handle_callback(callback_id: str, chat_id, data: str):
         except Exception as e:
             send(chat_id, f"❌ Lỗi: {e}")
     elif data == "confirm_restart":
-        answer_callback(callback_id, "🔄 Đang restart...")
+        answer_callback(callback_id, "🔄 Đang restart...", chat_id=chat_id)
         send(chat_id, "🔄 Đang restart sau 60 giây...\nDùng /cancel để huỷ.")
         try:
             if IS_WINDOWS: subprocess.Popen(["shutdown","/r","/t","60"])
@@ -1825,16 +1852,16 @@ def handle_callback(callback_id: str, chat_id, data: str):
         except Exception as e:
             send(chat_id, f"❌ Lỗi: {e}")
     elif data == "cancel_poweroff":
-        answer_callback(callback_id, "✅ Đã huỷ")
+        answer_callback(callback_id, "✅ Đã huỷ", chat_id=chat_id)
         send(chat_id, "✅ Đã huỷ lệnh tắt/restart.")
     elif data == "confirm_logindone":
-        answer_callback(callback_id, "💾 Đang lưu cookie...")
+        answer_callback(callback_id, "💾 Đang lưu cookie...", chat_id=chat_id)
         cmd_logindone(chat_id)
     elif data == "cancel_login":
-        answer_callback(callback_id, "✅ Đã huỷ")
+        answer_callback(callback_id, "✅ Đã huỷ", chat_id=chat_id)
         cmd_logincancel(chat_id)
     else:
-        answer_callback(callback_id, "❓ Không rõ hành động")
+        answer_callback(callback_id, "❓ Không rõ hành động", chat_id=chat_id)
 # ─────────────────────────────────────────
 # REGISTER COMMANDS (menu Telegram)
 # ─────────────────────────────────────────
