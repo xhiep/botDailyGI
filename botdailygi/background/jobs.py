@@ -36,6 +36,18 @@ def _render_checkin_lines(results: list[dict]) -> str:
     return "\n".join(_render_checkin_result(TELEGRAM_CHAT_ID, item) for item in results)
 
 
+def _next_resin_check_seconds(current: int, maximum: int, eta_seconds: int, threshold: int, threshold_critical: int) -> int:
+    if current < threshold:
+        resin_needed = max(threshold - current, 0)
+        predicted = resin_needed * 480
+        if eta_seconds > 0:
+            predicted = min(predicted, eta_seconds)
+        return max(predicted, 60)
+    if threshold_critical > threshold and current < threshold_critical:
+        return max((threshold_critical - current) * 480, 300)
+    return 1800
+
+
 def auto_checkin_loop() -> None:
     schedule = [(9, 0), (21, 0)]
     log.info("Auto check-in thread ready (09:00 and 21:00 VN)")
@@ -76,38 +88,63 @@ def auto_checkin_loop() -> None:
 def resin_monitor_loop() -> None:
     log.info("Resin monitor thread ready")
     account_info_cache: dict[str, tuple[str, str, str, float]] = {}
+    resin_state_cache: dict[str, dict] = {}
     cache_ttl = 3600
+    force_refresh = False
     while True:
         config = load_resin_config()
         account_items = accounts.all_account_cookies()
         if not account_items:
+            resin_state_cache.clear()
             resin_wake_event.wait(timeout=1800)
+            force_refresh = resin_wake_event.is_set()
             resin_wake_event.clear()
             continue
-        next_sleep = 1800
+        next_wake_at: float | None = None
         changed = False
         any_enabled = False
         multi = len(account_items) > 1
         try:
+            now_ts = time.time()
+            live_accounts = {entry.get("name", "?") for entry, _cookies in account_items}
+            for cached_name in list(resin_state_cache):
+                if cached_name not in live_accounts:
+                    resin_state_cache.pop(cached_name, None)
             for entry, cookies in account_items:
                 account_name = entry.get("name", "?")
                 account_cfg = get_account_resin_config(config, account_name)
                 if not account_cfg.get("enabled"):
+                    resin_state_cache.pop(account_name, None)
                     continue
                 any_enabled = True
                 cached = account_info_cache.get(account_name)
                 if not cached or (time.time() - cached[3]) > cache_ttl:
                     info = get_account_info(cookies)
                     if not info:
-                        next_sleep = min(next_sleep, 1800)
+                        next_due_at = time.time() + 1800
+                        resin_state_cache[account_name] = {"next_check_at": next_due_at}
+                        next_wake_at = next_due_at if next_wake_at is None else min(next_wake_at, next_due_at)
                         continue
                     cached = (info[0], info[1], info[2], time.time())
                     account_info_cache[account_name] = cached
+                state = resin_state_cache.get(account_name)
+                cookie_key = cookies.get("ltuid_v2") or cookies.get("account_id_v2") or account_name
+                if (
+                    not force_refresh
+                    and state
+                    and state.get("cookie_key") == cookie_key
+                    and state.get("next_check_at", 0) > now_ts
+                ):
+                    next_due_at = float(state["next_check_at"])
+                    next_wake_at = next_due_at if next_wake_at is None else min(next_wake_at, next_due_at)
+                    continue
                 uid, nickname, region, _cached_at = cached
                 payload = get_realtime_notes(cookies, uid, region)
                 if payload.get("retcode", -1) != 0:
                     account_info_cache.pop(account_name, None)
-                    next_sleep = min(next_sleep, 1800)
+                    next_due_at = time.time() + 1800
+                    resin_state_cache[account_name] = {"next_check_at": next_due_at, "cookie_key": cookie_key}
+                    next_wake_at = next_due_at if next_wake_at is None else min(next_wake_at, next_due_at)
                     continue
                 data = payload["data"]
                 current = data.get("current_resin", 0)
@@ -151,36 +188,47 @@ def resin_monitor_loop() -> None:
                         ):
                             config = set_account_resin_config(config, account_name, {"notified_critical": True})
                             changed = True
-                    next_sleep = min(next_sleep, 1800)
-                    continue
+                if current < threshold:
+                    reset_flags = {}
+                    if account_cfg.get("notified", False):
+                        reset_flags["notified"] = False
+                    if account_cfg.get("notified_critical", False):
+                        reset_flags["notified_critical"] = False
+                    if reset_flags:
+                        config = set_account_resin_config(config, account_name, reset_flags)
+                        changed = True
 
-                if current >= threshold:
-                    sleep_seconds = 1800 if not critical_active else max((threshold_critical - current) * 480, 300)
-                    next_sleep = min(next_sleep, sleep_seconds)
-                    continue
-
-                reset_flags = {}
-                if account_cfg.get("notified", False):
-                    reset_flags["notified"] = False
-                if account_cfg.get("notified_critical", False):
-                    reset_flags["notified_critical"] = False
-                if reset_flags:
-                    config = set_account_resin_config(config, account_name, reset_flags)
-                    changed = True
-
-                resin_needed = threshold - current
-                sleep_seconds = max(min(resin_needed * 480, eta_seconds or resin_needed * 480), 300)
-                next_sleep = min(next_sleep, sleep_seconds)
+                sleep_seconds = _next_resin_check_seconds(
+                    current=current,
+                    maximum=maximum,
+                    eta_seconds=eta_seconds,
+                    threshold=threshold,
+                    threshold_critical=threshold_critical,
+                )
+                next_due_at = time.time() + sleep_seconds
+                resin_state_cache[account_name] = {
+                    "cookie_key": cookie_key,
+                    "current": current,
+                    "threshold": threshold,
+                    "next_check_at": next_due_at,
+                }
+                next_wake_at = next_due_at if next_wake_at is None else min(next_wake_at, next_due_at)
 
             if changed:
                 save_resin_config(config)
             if not any_enabled:
-                next_sleep = 1800
-            resin_wake_event.wait(timeout=max(int(next_sleep), 300))
+                timeout = 1800
+            elif next_wake_at is None:
+                timeout = 1800
+            else:
+                timeout = max(int(next_wake_at - time.time()), 60)
+            resin_wake_event.wait(timeout=timeout)
+            force_refresh = resin_wake_event.is_set()
             resin_wake_event.clear()
         except Exception as exc:
             log.warning(f"[resin] Loop error: {exc}")
             resin_wake_event.wait(timeout=1800)
+            force_refresh = resin_wake_event.is_set()
             resin_wake_event.clear()
 
 
