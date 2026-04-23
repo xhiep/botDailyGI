@@ -1,0 +1,53 @@
+# ─── Credentials & config nhạy cảm ───
+.env
+runtime/
+hoyolab.json
+hoyolab_*.json
+live_detect.json
+resin_notify.json
+accounts.json
+user_langs.json
+codes_blacklist.txt
+
+# ─── Log files ───
+*.log
+*.log.*
+
+# ─── Python cache ───
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# ─── Virtual environments ───
+.venv/
+venv/
+env/
+ENV/
+
+# ─── Pytest cache ───
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+
+# ─── Playwright ───
+playwright-report/
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ─── OS ───
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ─── Build / Dist ───
+build/
+dist/
+*.egg-info/

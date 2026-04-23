@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+import os
+
+from botdailygi.clients.telegram import send_text
+from botdailygi.i18n import get_lang, t
+from botdailygi.renderers.text import md_code, md_escape
+from botdailygi.runtime.paths import CODES_BLACKLIST_FILE
+from botdailygi.runtime.state import check_change_cooldown, mark_change, redeem_lock
+from botdailygi.services import accounts
+from botdailygi.services.codes import (
+    HOYOLAB_LANG,
+    invalidate_blacklist_cache,
+    load_blacklist,
+    load_codes_from_file,
+    redeem_batch,
+    should_blacklist,
+)
+from botdailygi.services.hoyolab import get_account_info_cached, redeem_one
+from botdailygi.services.progress import ProgressMessage
+
+
+def _render_batch_result(chat_id, account_name: str, nickname: str, results: dict) -> str:
+    prefix = f"{md_code(account_name)} " if account_name else ""
+    lines = [t("code.redeem.summary", chat_id, prefix=prefix, nickname=md_escape(nickname))]
+    if results["ok"]:
+        lines.append(t("code.redeem.ok", chat_id, count=len(results["ok"]), codes=", ".join(md_code(code) for code in results["ok"])))
+    if results["fail_bl"]:
+        lines.append(t("code.redeem.fail_bl", chat_id, count=len(results["fail_bl"])))
+        for code, reason_key, message in results["fail_bl"]:
+            lines.append(f"  - {md_code(code)} - {t(reason_key, chat_id)}: {md_escape(message[:60])}")
+    if results["fail_other"]:
+        lines.append(t("code.redeem.fail_other", chat_id, count=len(results["fail_other"])))
+        for code, message in results["fail_other"]:
+            lines.append(f"  - {md_code(code)} - {md_escape(message[:60])}")
+    if results["skipped"]:
+        lines.append(t("code.redeem.skipped", chat_id, count=len(results["skipped"])))
+    return "\n".join(lines)
+
+
+def cmd_redeem(chat_id, arg: str = "") -> None:
+    code = (arg or "").strip().upper()
+    if not code:
+        send_text(chat_id, t("code.usage", chat_id))
+        return
+    blacklist = load_blacklist()
+    if code in blacklist:
+        send_text(chat_id, t("code.blacklisted", chat_id, code=md_code(code), reason=blacklist[code]))
+        return
+    account_cookies = accounts.all_account_cookies()
+    if not account_cookies:
+        send_text(chat_id, t("gen.no_login", chat_id))
+        return
+    if not redeem_lock.acquire(blocking=False):
+        send_text(chat_id, t("code.redeem_busy", chat_id))
+        return
+    progress = ProgressMessage.start(chat_id, t("code.redeeming", chat_id, code=md_code(code)), action="typing")
+    try:
+        lines = []
+        api_lang = HOYOLAB_LANG.get(get_lang(chat_id), "en-us")
+        multi = len(account_cookies) > 1
+        for entry, cookies in account_cookies:
+            info = get_account_info_cached(cookies)
+            account_name = entry.get("name", "") if multi else ""
+            if not info:
+                lines.append(t("gen.no_uid", chat_id) + (f" {md_code(account_name)}" if account_name else ""))
+                continue
+            uid, _nickname, region = info
+            ok, message, retcode = redeem_one(cookies, uid, region, code, api_lang)
+            label = f"{md_code(account_name)} {md_code(code)}" if account_name else md_code(code)
+            if ok:
+                lines.append(t("code.success", chat_id, code=label))
+                continue
+            should_add, reason_key = should_blacklist(message, retcode)
+            if should_add:
+                from botdailygi.services.codes import add_to_blacklist
+
+                add_to_blacklist(code, reason_key)
+                lines.append(t("code.failed_bl", chat_id, code=label, msg=md_escape(message), reason=t(reason_key, chat_id)))
+            else:
+                lines.append(t("code.failed", chat_id, code=label, msg=md_escape(message)))
+        progress.done("\n".join(lines))
+    finally:
+        redeem_lock.release()
+
+
+def cmd_redeemall(chat_id, _arg: str = "") -> None:
+    if not redeem_lock.acquire(blocking=False):
+        send_text(chat_id, t("code.redeem_busy2", chat_id))
+        return
+    try:
+        codes = load_codes_from_file()
+        if not codes:
+            send_text(chat_id, t("code.no_codes", chat_id))
+            return
+        account_cookies = accounts.all_account_cookies()
+        if not account_cookies:
+            send_text(chat_id, t("gen.no_login", chat_id))
+            return
+        progress = ProgressMessage.start(chat_id, t("code.redeem.batch_start", chat_id, count=len(codes)), action="typing")
+        summaries = []
+        api_lang = HOYOLAB_LANG.get(get_lang(chat_id), "en-us")
+        multi = len(account_cookies) > 1
+        for entry, cookies in account_cookies:
+            info = get_account_info_cached(cookies)
+            if not info:
+                summaries.append(t("gen.no_uid", chat_id) + (f" {md_code(entry.get('name', ''))}" if multi else ""))
+                continue
+            uid, nickname, region = info
+            results = redeem_batch(codes=codes, cookies=cookies, uid=uid, region=region, lang_code=api_lang)
+            summaries.append(_render_batch_result(chat_id, entry.get("name", "") if multi else "", nickname, results))
+        progress.done("\n\n".join(summaries))
+    finally:
+        redeem_lock.release()
+
+
+def cmd_blacklist(chat_id, _arg: str = "") -> None:
+    blacklist = load_blacklist()
+    if not blacklist:
+        send_text(chat_id, t("code.bl_empty", chat_id))
+        return
+    lines = [t("code.bl_header", chat_id, count=len(blacklist)), "━━━━━━━━━━━━━━━━━━━━"]
+    for code, reason in sorted(blacklist.items()):
+        reason_text = t(reason, chat_id) if reason.startswith("code.reason.") else reason
+        lines.append(f"  • {md_code(code)} — {reason_text}")
+    lines.extend(["━━━━━━━━━━━━━━━━━━━━", t("code.bl_footer", chat_id)])
+    send_text(chat_id, "\n".join(lines))
+
+
+def cmd_clearblacklist(chat_id, _arg: str = "") -> None:
+    blacklist = load_blacklist()
+    if not blacklist:
+        send_text(chat_id, t("code.bl_already_empty", chat_id))
+        return
+    wait = check_change_cooldown(chat_id)
+    if wait > 0:
+        send_text(chat_id, t("gen.cooldown", chat_id, sec=wait))
+        return
+    try:
+        mark_change(chat_id)
+        try:
+            os.remove(CODES_BLACKLIST_FILE)
+        except Exception as exc:
+            send_text(chat_id, t("code.clear_error", chat_id, e=exc))
+            return
+    except Exception as exc:
+        send_text(chat_id, t("code.clear_error", chat_id, e=exc))
+        return
+    invalidate_blacklist_cache()
+    send_text(chat_id, t("code.cleared", chat_id, count=len(blacklist)))

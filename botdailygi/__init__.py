@@ -1,0 +1,2 @@
+"""botDailyGI package."""
+
