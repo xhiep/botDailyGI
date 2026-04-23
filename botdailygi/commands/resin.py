@@ -6,7 +6,7 @@ from botdailygi.clients.telegram import send_text
 from botdailygi.commands.common import HINT_RESIN, hint_for
 from botdailygi.commands.helpers import active_accounts, parallel_account_map
 from botdailygi.i18n import t
-from botdailygi.renderers.text import account_heading, display_name as fmt_display_name, md_code
+from botdailygi.renderers.text import account_heading, display_name as fmt_display_name, md_code, meter_bar
 from botdailygi.runtime.state import check_change_cooldown, mark_change, now_vn, resin_wake_event
 from botdailygi.services.hoyolab import get_account_info_cached, get_realtime_notes
 from botdailygi.services.progress import ProgressMessage
@@ -40,8 +40,7 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     current = data.get("current_resin", 0)
     maximum = data.get("max_resin", 200)
     eta_seconds = int(data.get("resin_recovery_time", "0"))
-    filled = int(current / maximum * 10)
-    bar = "█" * filled + "░" * (10 - filled)
+    bar = meter_bar(current, maximum, width=10)
     if eta_seconds <= 0:
         full_in = t("resin.full_done", chat_id)
         full_at = ""

@@ -1,6 +1,18 @@
 from __future__ import annotations
 
 
+def divider(width: int = 20, *, char: str = "─") -> str:
+    return char * max(width, 1)
+
+
+def meter_bar(current: int | float, maximum: int | float, *, width: int = 10, filled: str = "█", empty: str = "░") -> str:
+    if maximum <= 0:
+        return empty * width
+    ratio = max(0.0, min(float(current) / float(maximum), 1.0))
+    fill = min(width, max(0, int(ratio * width)))
+    return filled * fill + empty * (width - fill)
+
+
 def md_escape(value) -> str:
     text = "" if value is None else str(value)
     for old, new in (

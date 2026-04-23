@@ -8,7 +8,7 @@ from botdailygi.clients.http import IS_WINDOWS
 from botdailygi.clients.telegram import send_text
 from botdailygi.commands.helpers import active_accounts, parallel_account_map
 from botdailygi.i18n import t
-from botdailygi.renderers.text import account_heading, md_code, md_escape
+from botdailygi.renderers.text import account_heading, divider, md_code, md_escape, meter_bar
 from botdailygi.runtime.logging import log
 from botdailygi.runtime.paths import LOG_FILE
 from botdailygi.runtime.state import (
@@ -53,8 +53,7 @@ def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
         current = notes.get("current_resin", 0)
         maximum = notes.get("max_resin", 200)
         eta_seconds = int(notes.get("resin_recovery_time", "0"))
-        fill = int(current / maximum * 10)
-        bar = "█" * fill + "░" * (10 - fill)
+        bar = meter_bar(current, maximum, width=10)
         eta_text = (
             t("status.eta_full", chat_id)
             if eta_seconds <= 0
@@ -88,7 +87,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         t("status.host_line", chat_id, host=socket.gethostname(), os="Win" if IS_WINDOWS else "Linux"),
         t("status.time_line", chat_id, time=now_vn().strftime("%H:%M:%S  %d/%m/%Y")),
         t("status.uptime_line", chat_id, uptime=uptime_str()),
-        "━━━━━━━━━━━━━━━━━━━━",
+        divider(20),
     ]
     items = active_accounts()
     if not items:
@@ -111,7 +110,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
                     seen_uids[uid] = account_name
                 lines.extend(snapshot.get("lines", []))
             if index < len(items) - 1:
-                lines.append("────────────────────")
+                lines.append(divider(20))
     try:
         now = now_vn()
         for version, patch_date in get_versions():
@@ -135,7 +134,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
                 break
     except Exception:
         pass
-    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    lines.append(divider(20))
     alive_map = {thread.name: thread.is_alive() for thread in threading.enumerate()}
     thread_parts = []
     any_dead = False
