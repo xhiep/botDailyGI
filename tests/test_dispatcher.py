@@ -20,6 +20,12 @@ class DispatcherTests(unittest.TestCase):
         send_text.assert_called_once()
 
     @patch("botdailygi.core.dispatcher.authorized", return_value=True)
+    @patch("botdailygi.core.dispatcher.send_text")
+    def test_handle_text_rejects_blank_message(self, send_text, _authorized):
+        handle_text(123, "   ")
+        send_text.assert_called_once()
+
+    @patch("botdailygi.core.dispatcher.authorized", return_value=True)
     @patch("botdailygi.core.dispatcher.invalidate_status_cache")
     @patch("botdailygi.core.dispatcher.cmd_help")
     @patch("botdailygi.core.dispatcher.answer_callback")

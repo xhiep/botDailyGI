@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 from botdailygi.clients.http import HTTP, UA
 from botdailygi.i18n import t
-from botdailygi.runtime.logging import log
+from botdailygi.runtime.logging import log, log_throttled
 from botdailygi.runtime.state import ACT_ID, DS_SALT, INFO_API, SIGN_API
 
 
@@ -165,11 +165,20 @@ def _game_record_get(urls: list[str], *, cookies: dict, params: dict, log_label:
             response = HTTP.get(url, headers=headers, params=params, timeout=15)
             payload = safe_json(response)
             retcode = payload.get("retcode", -99)
-            log.info(f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={payload.get('message', '')[:50]}")
+            message = payload.get("message", "")[:50]
+            if response.status_code == 200 and retcode == 0:
+                log.debug(f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={message}")
+            else:
+                log_throttled(
+                    30,
+                    f"hoyolab.get.{log_label}.{url}.{response.status_code}.{retcode}",
+                    300,
+                    f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={message}",
+                )
             if response.status_code == 200 and retcode not in (-99, -1):
                 return payload
         except Exception as exc:
-            log.warning(f"[{log_label}] {url}: {exc}")
+            log_throttled(30, f"hoyolab.get.exc.{log_label}.{url}", 300, f"[{log_label}] {url}: {exc}")
     return {"retcode": -1, "message": f"{log_label} API unreachable"}
 
 
@@ -186,11 +195,20 @@ def _game_record_post(urls: list[str], *, cookies: dict, body: dict, log_label: 
             response = HTTP.post(url, headers=headers, data=body_text, timeout=15)
             payload = safe_json(response)
             retcode = payload.get("retcode", -99)
-            log.info(f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={payload.get('message', '')[:50]}")
+            message = payload.get("message", "")[:50]
+            if response.status_code == 200 and retcode == 0:
+                log.debug(f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={message}")
+            else:
+                log_throttled(
+                    30,
+                    f"hoyolab.post.{log_label}.{url}.{response.status_code}.{retcode}",
+                    300,
+                    f"[{log_label}] HTTP {response.status_code} rc={retcode} msg={message}",
+                )
             if response.status_code == 200 and retcode not in (-99, -1):
                 return payload
         except Exception as exc:
-            log.warning(f"[{log_label}] {url}: {exc}")
+            log_throttled(30, f"hoyolab.post.exc.{log_label}.{url}", 300, f"[{log_label}] {url}: {exc}")
     return {"retcode": -1, "message": f"{log_label} API unreachable"}
 
 

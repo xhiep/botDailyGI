@@ -46,7 +46,7 @@ def load_blacklist() -> dict[str, str]:
             mtime = CODES_BLACKLIST_FILE.stat().st_mtime
         except OSError:
             return {}
-        if _blacklist_cache and mtime == _blacklist_mtime:
+        if mtime == _blacklist_mtime:
             return dict(_blacklist_cache)
         blacklist = {}
         skipped = 0

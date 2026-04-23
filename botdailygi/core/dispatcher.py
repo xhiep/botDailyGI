@@ -19,6 +19,9 @@ def handle_text(chat_id, text: str) -> None:
         send_text(chat_id, t("gen.unauthorized", chat_id))
         return
     raw = text.strip()
+    if not raw:
+        send_text(chat_id, t("gen.unknown_cmd", chat_id))
+        return
     parts = raw.split(maxsplit=1)
     cmd = parts[0].lower().split("@")[0]
     arg = parts[1].strip() if len(parts) > 1 else ""

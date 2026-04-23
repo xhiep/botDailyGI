@@ -5,7 +5,7 @@ from pathlib import Path
 
 from botdailygi.clients.http import HTTP
 from botdailygi.config import TELEGRAM_BOT_TOKEN
-from botdailygi.runtime.logging import log
+from botdailygi.runtime.logging import log, log_throttled
 from botdailygi.runtime.state import report_poll_failure, report_poll_success
 
 
@@ -111,14 +111,35 @@ def edit_text(chat_id, message_id: int, text: str, *, buttons: list[list[dict]] 
         payload["reply_markup"] = {"inline_keyboard": buttons}
     try:
         response = HTTP.post(f"{base_url()}/editMessageText", json=payload, timeout=15)
-        data = _telegram_json(response, "editMessageText", chat_id=chat_id)
-        if data:
+        try:
+            data = response.json()
+        except Exception as exc:
+            log.warning(f"[editMessageText] Telegram JSON error (chat={chat_id}): {exc} / HTTP {response.status_code}")
+            data = {}
+        if data.get("ok"):
             return True
+        description = str(data.get("description", ""))
+        if "message is not modified" in description.lower():
+            return True
+        if data:
+            log.warning(
+                f"[editMessageText] Telegram reject (chat={chat_id}) "
+                f"code={data.get('error_code')} desc={description}"
+            )
         fallback = HTTP.post(
             f"{base_url()}/editMessageText",
             json={"chat_id": chat_id, "message_id": message_id, "text": text},
             timeout=15,
         )
+        try:
+            fallback_data = fallback.json()
+        except Exception as exc:
+            log.warning(
+                f"[editMessageText.fallback] Telegram JSON error (chat={chat_id}): {exc} / HTTP {fallback.status_code}"
+            )
+            return False
+        if "message is not modified" in str(fallback_data.get("description", "")).lower():
+            return True
         return bool(_telegram_json(fallback, "editMessageText.fallback", chat_id=chat_id))
     except Exception as exc:
         log.warning(f"[editMessageText] chat={chat_id} msg={message_id}: {exc}")
@@ -212,6 +233,11 @@ def get_updates(offset=None) -> list[dict]:
         report_poll_failure(exc)
         error_text = str(exc)
         if "NameResolutionError" in error_text or "Failed to resolve" in error_text:
-            log.warning("[getUpdates] DNS fail - sleep 30s for network recovery")
-            time.sleep(30)
+            log_throttled(
+                30,
+                "telegram.getupdates.dns_fail",
+                300,
+                "[getUpdates] DNS fail - sleep 30s for network recovery",
+            )
+        time.sleep(30)
         return []

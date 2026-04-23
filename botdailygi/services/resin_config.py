@@ -49,7 +49,7 @@ def load_resin_config() -> dict:
             mtime = RESIN_NOTIFY_FILE.stat().st_mtime
         except OSError:
             return _normalize_config(None)
-        if _cache and _cache_mtime == mtime:
+        if _cache_mtime == mtime:
             return dict(_cache)
         try:
             data = json.loads(RESIN_NOTIFY_FILE.read_text(encoding="utf-8"))

@@ -32,7 +32,7 @@ def read_accounts() -> list[dict]:
             mtime = ACCOUNTS_FILE.stat().st_mtime
         except OSError:
             return []
-        if _accounts_cache and _accounts_mtime == mtime:
+        if _accounts_mtime == mtime:
             return list(_accounts_cache)
         try:
             data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8"))
