@@ -17,7 +17,7 @@ from botdailygi.services.account_import import (
     import_cookie_json,
     start_pending_import,
 )
-from botdailygi.services.hoyolab import get_account_info_cached
+from botdailygi.services.hoyolab import get_account_info_cached, invalidate_api_cache
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.status_cache import invalidate_status_cache
 
@@ -89,6 +89,7 @@ def cmd_removeaccount(chat_id, arg: str = "") -> None:
         except Exception as exc:
             log.warning(f"[removeaccount] Cannot delete {cookie_path}: {exc}")
     accounts.invalidate_cookie_cache()
+    invalidate_api_cache()
     invalidate_status_cache()
     resin_wake_event.set()
     send_text(
@@ -136,6 +137,7 @@ def handle_cookie_document(chat_id, document: dict) -> None:
         progress.update(t("acct.import.validating", chat_id, name=md_escape(pending.account_name)), action="typing")
         result = import_cookie_json(chat_id, pending, temp_path)
         accounts.invalidate_cookie_cache()
+        invalidate_api_cache()
         invalidate_status_cache()
         resin_wake_event.set()
         if result.get("uid"):

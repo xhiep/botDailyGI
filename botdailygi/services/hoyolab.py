@@ -17,6 +17,15 @@ from botdailygi.runtime.state import ACT_ID, DS_SALT, INFO_API, SIGN_API
 _account_cache: dict[str, tuple[tuple, float]] = {}
 _account_cache_lock = threading.Lock()
 _account_cache_ttl = 300
+_api_cache: dict[tuple, tuple[dict, float]] = {}
+_api_cache_lock = threading.Lock()
+_api_cache_ttls = {
+    "resin": 45,
+    "checkin": 60,
+    "stats": 300,
+    "chars": 300,
+    "abyss": 600,
+}
 
 
 def make_ds(body: str = "", query: str = "") -> str:
@@ -52,6 +61,41 @@ def base_headers(cookie_value: str) -> dict:
 def invalidate_account_cache() -> None:
     with _account_cache_lock:
         _account_cache.clear()
+
+
+def invalidate_api_cache(*, account_key: str | None = None) -> None:
+    with _api_cache_lock:
+        if account_key is None:
+            _api_cache.clear()
+            return
+        stale_keys = [key for key in _api_cache if key and key[1] == account_key]
+        for key in stale_keys:
+            _api_cache.pop(key, None)
+
+
+def _cookie_cache_key(cookies: dict) -> str:
+    return str(cookies.get("ltuid_v2") or cookies.get("account_id_v2") or "_default")
+
+
+def _read_api_cache(kind: str, account_key: str, extra: tuple) -> dict | None:
+    ttl = _api_cache_ttls.get(kind, 0)
+    if ttl <= 0:
+        return None
+    key = (kind, account_key, *extra)
+    with _api_cache_lock:
+        entry = _api_cache.get(key)
+        if entry and (time.time() - entry[1]) < ttl:
+            return dict(entry[0])
+    return None
+
+
+def _write_api_cache(kind: str, account_key: str, extra: tuple, payload: dict) -> None:
+    ttl = _api_cache_ttls.get(kind, 0)
+    if ttl <= 0 or payload.get("retcode", -1) != 0:
+        return
+    key = (kind, account_key, *extra)
+    with _api_cache_lock:
+        _api_cache[key] = (dict(payload), time.time())
 
 
 def get_account_info(cookies: dict):
@@ -151,7 +195,12 @@ def _game_record_post(urls: list[str], *, cookies: dict, body: dict, log_label: 
 
 
 def get_realtime_notes(cookies: dict, uid, region) -> dict:
-    return _game_record_get(
+    account_key = _cookie_cache_key(cookies)
+    extra = (str(uid), str(region))
+    cached = _read_api_cache("resin", account_key, extra)
+    if cached:
+        return cached
+    payload = _game_record_get(
         [
             "https://bbs-api-os.hoyolab.com/game_record/genshin/api/dailyNote",
             "https://sg-public-api.hoyolab.com/game_record/genshin/api/dailyNote",
@@ -160,10 +209,17 @@ def get_realtime_notes(cookies: dict, uid, region) -> dict:
         params={"role_id": str(uid), "server": region},
         log_label="resin",
     )
+    _write_api_cache("resin", account_key, extra, payload)
+    return payload
 
 
 def get_characters(cookies: dict, uid, region) -> dict:
-    return _game_record_post(
+    account_key = _cookie_cache_key(cookies)
+    extra = (str(uid), str(region))
+    cached = _read_api_cache("chars", account_key, extra)
+    if cached:
+        return cached
+    payload = _game_record_post(
         [
             "https://bbs-api-os.hoyolab.com/game_record/genshin/api/character/list",
             "https://sg-public-api.hoyolab.com/game_record/genshin/api/character/list",
@@ -173,10 +229,17 @@ def get_characters(cookies: dict, uid, region) -> dict:
         body={"role_id": str(uid), "server": region},
         log_label="chars",
     )
+    _write_api_cache("chars", account_key, extra, payload)
+    return payload
 
 
 def get_genshin_stats(cookies: dict, uid, region) -> dict:
-    return _game_record_get(
+    account_key = _cookie_cache_key(cookies)
+    extra = (str(uid), str(region))
+    cached = _read_api_cache("stats", account_key, extra)
+    if cached:
+        return cached
+    payload = _game_record_get(
         [
             "https://bbs-api-os.hoyolab.com/game_record/genshin/api/index",
             "https://sg-public-api.hoyolab.com/game_record/genshin/api/index",
@@ -185,10 +248,17 @@ def get_genshin_stats(cookies: dict, uid, region) -> dict:
         params={"role_id": str(uid), "server": region},
         log_label="stats",
     )
+    _write_api_cache("stats", account_key, extra, payload)
+    return payload
 
 
 def get_spiral_abyss(cookies: dict, uid, region, schedule_type: int = 1) -> dict:
-    return _game_record_get(
+    account_key = _cookie_cache_key(cookies)
+    extra = (str(uid), str(region), int(schedule_type))
+    cached = _read_api_cache("abyss", account_key, extra)
+    if cached:
+        return cached
+    payload = _game_record_get(
         [
             "https://bbs-api-os.hoyolab.com/game_record/genshin/api/spiralAbyss",
             "https://sg-public-api.hoyolab.com/game_record/genshin/api/spiralAbyss",
@@ -197,6 +267,8 @@ def get_spiral_abyss(cookies: dict, uid, region, schedule_type: int = 1) -> dict
         params={"role_id": str(uid), "server": region, "schedule_type": str(schedule_type)},
         log_label="abyss",
     )
+    _write_api_cache("abyss", account_key, extra, payload)
+    return payload
 
 
 def redeem_one(cookies: dict, uid, region, code: str, lang_code: str = "en-us") -> tuple[bool, str, int]:
@@ -219,6 +291,10 @@ def redeem_one(cookies: dict, uid, region, code: str, lang_code: str = "en-us") 
 
 
 def get_checkin_info(cookies: dict) -> dict:
+    account_key = _cookie_cache_key(cookies)
+    cached = _read_api_cache("checkin", account_key, ())
+    if cached:
+        return cached
     headers = {
         "User-Agent": UA,
         "Referer": "https://www.hoyolab.com",
@@ -226,10 +302,13 @@ def get_checkin_info(cookies: dict) -> dict:
         "Cookie": cookie_str(cookies),
     }
     response = HTTP.get(INFO_API, params={"act_id": ACT_ID}, headers=headers, timeout=15)
-    return response.json()
+    payload = response.json()
+    _write_api_cache("checkin", account_key, (), payload)
+    return payload
 
 
 def sign_checkin(cookies: dict) -> dict:
+    account_key = _cookie_cache_key(cookies)
     headers = {
         "User-Agent": UA,
         "Referer": "https://www.hoyolab.com",
@@ -237,4 +316,6 @@ def sign_checkin(cookies: dict) -> dict:
         "Cookie": cookie_str(cookies),
     }
     response = HTTP.post(SIGN_API, json={"act_id": ACT_ID}, headers=headers, timeout=15)
-    return response.json()
+    payload = response.json()
+    invalidate_api_cache(account_key=account_key)
+    return payload
