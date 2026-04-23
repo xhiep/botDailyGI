@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from botdailygi.clients.telegram import send_text
 from botdailygi.i18n import t
+from botdailygi.renderers.text import divider
 from botdailygi.runtime.state import manual_checkin_lock
 from botdailygi.services.hoyolab import invalidate_api_cache
 from botdailygi.services.checkin import do_checkin_for_all
@@ -45,7 +46,7 @@ def cmd_checkin(chat_id, _arg: str = "") -> None:
         invalidate_status_cache()
         invalidate_api_cache()
         results = do_checkin_for_all(label=t("checkin.manual.label", chat_id), max_retries=1)
-        progress.done("\n".join(_render_checkin_result(chat_id, result) for result in results))
+        progress.done(f"📅 Check-in\n{divider(18)}\n" + "\n".join(_render_checkin_result(chat_id, result) for result in results))
     except Exception as exc:
         progress.fail(t("gen.error", chat_id, e=exc))
     finally:

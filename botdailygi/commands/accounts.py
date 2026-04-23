@@ -6,7 +6,7 @@ from pathlib import Path
 
 from botdailygi.clients.telegram import download_file, get_file, send_text
 from botdailygi.i18n import t
-from botdailygi.renderers.text import account_heading, md_code, md_escape
+from botdailygi.renderers.text import account_heading, divider, md_code, md_escape
 from botdailygi.runtime.logging import log
 from botdailygi.runtime.state import resin_wake_event
 from botdailygi.services import accounts
@@ -27,7 +27,7 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
     if not entries:
         send_text(chat_id, t("acct.empty", chat_id))
         return
-    lines = [t("acct.list_header", chat_id, count=len(entries)), "━━━━━━━━━━━━━━━━━━━━"]
+    lines = [t("acct.list_header", chat_id, count=len(entries)), divider(20)]
     for index, entry in enumerate(entries, 1):
         name = entry.get("name", "?")
         cookie_path = accounts.COOKIES_DIR / entry.get("cookie_file", "")
@@ -44,7 +44,9 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
         else:
             status = t("acct.status_no_file", chat_id)
         lines.append(f"{index}. {account_heading(name, icon='🗂️')}\n   {status}")
-    lines.append("━━━━━━━━━━━━━━━━━━━━")
+        if index < len(entries):
+            lines.append(divider(20))
+    lines.append(divider(20))
     lines.append(t("acct.list_footer", chat_id))
     send_text(chat_id, "\n".join(lines))
 

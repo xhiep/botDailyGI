@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from botdailygi.clients.telegram import send_text
 from botdailygi.i18n import get_lang, t
-from botdailygi.renderers.text import md_code, md_escape
+from botdailygi.renderers.text import divider, md_code, md_escape
 from botdailygi.runtime.paths import CODES_BLACKLIST_FILE
 from botdailygi.runtime.state import check_change_cooldown, mark_change, redeem_lock
 from botdailygi.services import accounts
@@ -31,17 +31,17 @@ def _parallel_account_map(items, fn, *, max_workers: int = 4):
 
 def _render_batch_result(chat_id, account_name: str, nickname: str, results: dict) -> str:
     prefix = f"{md_code(account_name)} " if account_name else ""
-    lines = [t("code.redeem.summary", chat_id, prefix=prefix, nickname=md_escape(nickname))]
+    lines = [t("code.redeem.summary", chat_id, prefix=prefix, nickname=md_escape(nickname)), divider(18)]
     if results["ok"]:
         lines.append(t("code.redeem.ok", chat_id, count=len(results["ok"]), codes=", ".join(md_code(code) for code in results["ok"])))
     if results["fail_bl"]:
         lines.append(t("code.redeem.fail_bl", chat_id, count=len(results["fail_bl"])))
         for code, reason_key, message in results["fail_bl"]:
-            lines.append(f"  - {md_code(code)} - {t(reason_key, chat_id)}: {md_escape(message[:60])}")
+            lines.append(f"  • {md_code(code)} · {t(reason_key, chat_id)}: {md_escape(message[:60])}")
     if results["fail_other"]:
         lines.append(t("code.redeem.fail_other", chat_id, count=len(results["fail_other"])))
         for code, message in results["fail_other"]:
-            lines.append(f"  - {md_code(code)} - {md_escape(message[:60])}")
+            lines.append(f"  • {md_code(code)} · {md_escape(message[:60])}")
     if results["skipped"]:
         lines.append(t("code.redeem.skipped", chat_id, count=len(results["skipped"])))
     return "\n".join(lines)
@@ -134,11 +134,11 @@ def cmd_blacklist(chat_id, _arg: str = "") -> None:
     if not blacklist:
         send_text(chat_id, t("code.bl_empty", chat_id))
         return
-    lines = [t("code.bl_header", chat_id, count=len(blacklist)), "━━━━━━━━━━━━━━━━━━━━"]
+    lines = [t("code.bl_header", chat_id, count=len(blacklist)), divider(20)]
     for code, reason in sorted(blacklist.items()):
         reason_text = t(reason, chat_id) if reason.startswith("code.reason.") else reason
         lines.append(f"  • {md_code(code)} — {reason_text}")
-    lines.extend(["━━━━━━━━━━━━━━━━━━━━", t("code.bl_footer", chat_id)])
+    lines.extend([divider(20), t("code.bl_footer", chat_id)])
     send_text(chat_id, "\n".join(lines))
 
 
