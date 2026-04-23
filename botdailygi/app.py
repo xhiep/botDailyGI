@@ -28,6 +28,7 @@ from botdailygi.runtime.state import (
     startup_ready,
 )
 from botdailygi.services.accounts import ensure_accounts_file
+from botdailygi.services.status_cache import invalidate_status_cache
 
 
 @dataclasses.dataclass(frozen=True)
@@ -184,6 +185,7 @@ def handle_callback(callback_id: str, chat_id, data: str) -> None:
             return
         mark_change(chat_id)
         set_lang(chat_id, selected)
+        invalidate_status_cache()
         answer_callback(callback_id, t("lang.changed_cb", chat_id, name=t(f"lang.{selected}_name", chat_id)))
         cmd_help(chat_id)
         return
