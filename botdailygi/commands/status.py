@@ -87,7 +87,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         t("status.host_line", chat_id, host=socket.gethostname(), os="Win" if IS_WINDOWS else "Linux"),
         t("status.time_line", chat_id, time=now_vn().strftime("%H:%M:%S  %d/%m/%Y")),
         t("status.uptime_line", chat_id, uptime=uptime_str()),
-        divider(20),
+        divider(12),
     ]
     items = active_accounts()
     if not items:
@@ -134,25 +134,25 @@ def cmd_status(chat_id, _arg: str = "") -> None:
                 break
     except Exception:
         pass
-    lines.append(divider(20))
+    lines.append(divider(12))
     alive_map = {thread.name: thread.is_alive() for thread in threading.enumerate()}
     thread_parts = []
     any_dead = False
-    for name, label in (("CheckIn", "📅 CheckIn"), ("ResinMon", "⚗️ ResinMon"), ("Heartbeat", "💓 Heartbeat")):
+    for name, label in (("CheckIn", "CheckIn"), ("ResinMon", "ResinMon"), ("Heartbeat", "Heartbeat")):
         alive = alive_map.get(name, False)
         any_dead = any_dead or not alive
-        thread_parts.append(f"{label} {'✅' if alive else '❌'}")
-    lines.append("🧵 " + " | ".join(thread_parts))
+        thread_parts.append(f"{label} {'✓' if alive else '✗'}")
+    lines.append("Threads: " + " | ".join(thread_parts))
     if any_dead:
         lines.append("⚠️ Có background thread đã dừng.")
     lock_parts = []
     if redeem_lock.locked():
-        lock_parts.append("redeem 🔒")
+        lock_parts.append("redeem")
     if manual_checkin_lock.locked():
-        lock_parts.append("checkin 🔒")
-    lines.append("🔐 Locks: " + (", ".join(lock_parts) if lock_parts else "rảnh"))
+        lock_parts.append("checkin")
+    lines.append("Locks: " + (", ".join(lock_parts) if lock_parts else "rảnh"))
     try:
-        lines.append(f"⚙️ CmdPool: {command_executor._work_queue.qsize()} lệnh chờ")
+        lines.append(f"CmdPool: {command_executor._work_queue.qsize()} lệnh chờ")
     except Exception:
         pass
     try:
@@ -163,7 +163,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
             "degraded_dns": f"mất DNS x{network.get('poll_dns_fail_streak', 0)}",
             "degraded_other": f"lỗi polling x{network.get('poll_fail_streak', 0)}",
         }
-        lines.append("🌐 Network: Telegram poll " + state_map.get(network.get("telegram_poll_state"), "không rõ"))
+        lines.append("Network: Telegram poll " + state_map.get(network.get("telegram_poll_state"), "không rõ"))
     except Exception:
         pass
     try:
@@ -173,13 +173,13 @@ def cmd_status(chat_id, _arg: str = "") -> None:
             for entry, _cookies in items:
                 account_name = entry.get("name", "?")
                 account_cfg = get_account_resin_config(config, account_name)
-                state_text = "✅ bật" if account_cfg.get("enabled", True) else "❌ tắt"
+                state_text = "bật" if account_cfg.get("enabled", True) else "tắt"
                 resin_parts.append(f"{md_code(account_name)}={state_text}/{account_cfg.get('threshold', 200)}")
-            lines.append("⚗️ ResinCfg: " + ", ".join(resin_parts))
+            lines.append("ResinCfg: " + ", ".join(resin_parts))
         else:
             default_cfg = config.get("default", {})
-            state_text = "✅ bật" if default_cfg.get("enabled", True) else "❌ tắt"
-            lines.append(f"⚗️ ResinCfg: {state_text}, ngưỡng={default_cfg.get('threshold', 200)}")
+            state_text = "bật" if default_cfg.get("enabled", True) else "tắt"
+            lines.append(f"ResinCfg: {state_text}, ngưỡng={default_cfg.get('threshold', 200)}")
     except Exception:
         pass
     try:

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 
-def divider(width: int = 20, *, char: str = "─") -> str:
+def divider(width: int = 12, *, char: str = "─") -> str:
+    """Create a subtle divider line. Default width reduced from 20 to 12 for Apple-style restraint."""
     return char * max(width, 1)
 
 
@@ -35,7 +36,8 @@ def account_tag(name: str) -> str:
     return f"({md_code(name)})"
 
 
-def account_heading(name: str, *, icon: str = "👤") -> str:
+def account_heading(name: str, *, icon: str = "•") -> str:
+    """Account heading with minimal icon. Default changed from 👤 to • for Apple-style restraint."""
     return f"{icon} {md_code(name)}"
 
 

@@ -33,7 +33,14 @@ from botdailygi.services.resin_config import (
 def _render_checkin_lines(results: list[dict]) -> str:
     from botdailygi.commands.checkin import _render_checkin_result
 
-    return "\n".join(_render_checkin_result(TELEGRAM_CHAT_ID, item) for item in results)
+    lines = []
+    for item in results:
+        try:
+            lines.append(_render_checkin_result(TELEGRAM_CHAT_ID, item))
+        except Exception as exc:
+            log.warning(f"[checkin] Failed to render result for {item.get('name', '?')}: {exc}")
+            lines.append(f"⚠️ {item.get('name', '?')}: Lỗi hiển thị kết quả")
+    return "\n".join(lines)
 
 
 def _next_resin_check_seconds(current: int, maximum: int, eta_seconds: int, threshold: int, threshold_critical: int) -> int:
@@ -110,6 +117,9 @@ def resin_monitor_loop() -> None:
             for cached_name in list(resin_state_cache):
                 if cached_name not in live_accounts:
                     resin_state_cache.pop(cached_name, None)
+            for cached_name in list(account_info_cache):
+                if cached_name not in live_accounts:
+                    account_info_cache.pop(cached_name, None)
             for entry, cookies in account_items:
                 account_name = entry.get("name", "?")
                 account_cfg = get_account_resin_config(config, account_name)
@@ -270,7 +280,7 @@ def heartbeat_loop() -> None:
                     checkin_data = get_checkin_info(cookies).get("data", {})
                     icon = t("status.checked", TELEGRAM_CHAT_ID) if checkin_data.get("is_sign") else t("status.not_checked", TELEGRAM_CHAT_ID)
                     display_name = fmt_display_name(nickname, entry.get("name", "?"), multi=multi)
-                    header = f"\n✨ {display_name}" if multi else ""
+                    header = f"\n• {display_name}" if multi else ""
                     parts.append(
                         header
                         + t("heartbeat.resin", TELEGRAM_CHAT_ID, bar=bar, cur=current, max=maximum, eta=eta_text)
@@ -279,9 +289,9 @@ def heartbeat_loop() -> None:
                 extra = "".join(parts)
 
             thread_parts = []
-            for name, label in (("CheckIn", "📅 CheckIn"), ("ResinMon", "⚗️ ResinMon"), ("Heartbeat", "💓 Heartbeat")):
+            for name, label in (("CheckIn", "CheckIn"), ("ResinMon", "ResinMon"), ("Heartbeat", "Heartbeat")):
                 alive = any(thread.name == name and thread.is_alive() for thread in threading.enumerate())
-                thread_parts.append(f"{label} {'✅' if alive else '❌'}")
+                thread_parts.append(f"{label} {'✓' if alive else '✗'}")
             locks_text = ", ".join(
                 name for name, lock in (("redeem", redeem_lock), ("checkin", manual_checkin_lock)) if lock.locked()
             ) or "rảnh"
@@ -294,10 +304,10 @@ def heartbeat_loop() -> None:
                     time=now_vn().strftime("%H:%M:%S  %d/%m/%Y"),
                     uptime=uptime_str(),
                     extra=extra
-                    + "\n━━━━━━━━━━━━━━━━━━━━\n"
-                    + "🧵 "
+                    + "\n" + "─" * 12 + "\n"
+                    + "Threads: "
                     + " | ".join(thread_parts)
-                    + f"\n🔐 Locks: {locks_text}",
+                    + f"\nLocks: {locks_text}",
                 ),
             )
         except Exception as exc:
