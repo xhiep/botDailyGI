@@ -54,7 +54,7 @@ def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
         current = notes.get("current_resin", 0)
         maximum = notes.get("max_resin", 200)
         eta_seconds = int(notes.get("resin_recovery_time", "0"))
-        bar = meter_bar(current, maximum, width=10)
+        bar = meter_bar(current, maximum)
         eta_text = (
             t("status.eta_full", chat_id)
             if eta_seconds <= 0

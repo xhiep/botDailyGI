@@ -40,7 +40,7 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     current = data.get("current_resin", 0)
     maximum = data.get("max_resin", 200)
     eta_seconds = int(data.get("resin_recovery_time", "0"))
-    bar = meter_bar(current, maximum, width=10)
+    bar = meter_bar(current, maximum)
     if eta_seconds <= 0:
         full_in = t("resin.full_done", chat_id)
         full_at = ""
@@ -55,7 +55,7 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     daily_done = data.get("finished_task_num", 0)
     daily_total = data.get("total_task_num", 4)
     reward = t("resin.claimed", chat_id) if data.get("is_extra_task_reward_received", False) else t("resin.unclaimed", chat_id)
-    daily_icon = "✅" if daily_done >= daily_total else "❌"
+    daily_icon = "✓" if daily_done >= daily_total else "✗"
     title_name = fmt_display_name(nickname, account_name, multi=multi)
     lines = [
         t("resin.title", chat_id, nickname=title_name),

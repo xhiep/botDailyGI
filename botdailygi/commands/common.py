@@ -30,13 +30,13 @@ HINT_ABYSS = {
 }
 
 ELEMENT_ICON = {
-    "Pyro": "🔥",
-    "Hydro": "💧",
-    "Anemo": "🌬️",
-    "Electro": "⚡",
-    "Dendro": "🌿",
-    "Cryo": "❄️",
-    "Geo": "🪨",
+    "Pyro": "P",
+    "Hydro": "H",
+    "Anemo": "A",
+    "Electro": "E",
+    "Dendro": "D",
+    "Cryo": "C",
+    "Geo": "G",
 }
 
 

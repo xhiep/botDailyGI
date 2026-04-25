@@ -89,7 +89,7 @@ def _stats_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
         for world in sorted(worlds, key=lambda item: item.get("exploration_percentage", 0), reverse=True):
             percent = world.get("exploration_percentage", 0) / 10.0
             name = world.get("name", "?")[:16]
-            bar = meter_bar(percent, 100, width=10)
+            bar = meter_bar(percent, 100)
             lines.append(f"  {name:<16} [{bar}] {percent:.1f}%")
     return "\n".join(lines)
 
@@ -132,19 +132,19 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
     if five_star:
         lines.append(t("chars.five_hdr", chat_id, count=len(five_star)))
         for character in five_star:
-            icon = ELEMENT_ICON.get(character.get("element", ""), "✨")
+            icon = ELEMENT_ICON.get(character.get("element", ""), "•")
             constellation = character.get("actived_constellation_num", 0)
             level = character.get("level", 0)
             fetter = character.get("fetter", 0)
-            heart = "❤️" if fetter == 10 else f"🤍{fetter}"
+            heart = "✓" if fetter == 10 else f"○{fetter}"
             lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation} {heart}")
     if four_star:
         lines.append("\n" + t("chars.four_hdr", chat_id, count=len(four_star)))
         for character in four_star:
-            icon = ELEMENT_ICON.get(character.get("element", ""), "✨")
+            icon = ELEMENT_ICON.get(character.get("element", ""), "•")
             constellation = character.get("actived_constellation_num", 0)
             level = character.get("level", 0)
-            lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation}{' ✅' if constellation == 6 else ''}")
+            lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation}{' ✓' if constellation == 6 else ''}")
     element_count: dict[str, int] = {}
     element_count_5: dict[str, int] = {}
     for character in characters:
