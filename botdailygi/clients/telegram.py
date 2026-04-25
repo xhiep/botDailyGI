@@ -109,7 +109,7 @@ def edit_text(chat_id, message_id: int, text: str, *, buttons: list[list[dict]] 
     # Truncate text if too long (Telegram limit is 4096 chars)
     max_len = 4000
     if len(text) > max_len:
-        text = text[:max_len - 20] + "\n\n⚠️ (Đã cắt bớt)"
+        text = text[:max_len - 20] + "\n\n⚠ (Đã cắt bớt)"
 
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text, "parse_mode": "Markdown"}
     if buttons is not None:
