@@ -8,6 +8,7 @@ from botdailygi.commands.common import ELEMENT_ICON, HINT_ABYSS, HINT_CHARS, HIN
 from botdailygi.commands.helpers import active_accounts, parallel_account_map
 from botdailygi.i18n import t
 from botdailygi.renderers.text import account_heading, display_name as fmt_display_name, divider, md_escape, meter_bar
+from botdailygi.ui_constants import ICON_SUCCESS, ICON_INFO, ICON_DAMAGE, ICON_SHIELD, ICON_KILL, ICON_ENERGY
 from botdailygi.runtime.state import VN_TZ
 from botdailygi.services.hoyolab import (
     get_account_info_cached,
@@ -136,7 +137,7 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
             constellation = character.get("actived_constellation_num", 0)
             level = character.get("level", 0)
             fetter = character.get("fetter", 0)
-            heart = "✓" if fetter == 10 else f"○{fetter}"
+            heart = ICON_SUCCESS if fetter == 10 else f"{ICON_INFO}{fetter}"
             lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation} {heart}")
     if four_star:
         lines.append("\n" + t("chars.four_hdr", chat_id, count=len(four_star)))
@@ -144,7 +145,7 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
             icon = ELEMENT_ICON.get(character.get("element", ""), "•")
             constellation = character.get("actived_constellation_num", 0)
             level = character.get("level", 0)
-            lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation}{' ✓' if constellation == 6 else ''}")
+            lines.append(f"  {icon} {character['name']}  Lv.{level} C{constellation}{' ' + ICON_SUCCESS if constellation == 6 else ''}")
     element_count: dict[str, int] = {}
     element_count_5: dict[str, int] = {}
     for character in characters:
@@ -263,7 +264,7 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
         t("abyss.stats", chat_id, stars=total_star, floor=max_floor, battles=total_battles, wins=total_wins),
         divider(DIVIDER_SHORT),
     ]
-    for key, icon in (("damage_rank", "⚔"), ("take_damage_rank", "○"), ("kill_rank", "✗"), ("energy_skill_rank", "✨")):
+    for key, icon in (("damage_rank", ICON_DAMAGE), ("take_damage_rank", ICON_SHIELD), ("kill_rank", ICON_KILL), ("energy_skill_rank", ICON_ENERGY)):
         top = (abyss.get(key) or [None])[0]
         if top:
             lines.append(f"{icon} {top.get('value', 0):,}  ← {_char_name(top, live_names)}")

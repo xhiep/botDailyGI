@@ -9,6 +9,7 @@ from botdailygi.clients.telegram import send_text
 from botdailygi.config import TELEGRAM_CHAT_ID
 from botdailygi.i18n import t
 from botdailygi.renderers.text import display_name as fmt_display_name
+from botdailygi.ui_constants import ICON_WARNING, ICON_SUCCESS, ICON_ERROR
 from botdailygi.runtime.logging import log
 from botdailygi.runtime.state import (
     checkin_wake_event,
@@ -39,7 +40,7 @@ def _render_checkin_lines(results: list[dict]) -> str:
             lines.append(_render_checkin_result(TELEGRAM_CHAT_ID, item))
         except Exception as exc:
             log.warning(f"[checkin] Failed to render result for {item.get('name', '?')}: {exc}")
-            lines.append(f"⚠️ {item.get('name', '?')}: Lỗi hiển thị kết quả")
+            lines.append(f"{ICON_WARNING} {item.get('name', '?')}: Lỗi hiển thị kết quả")
     return "\n".join(lines)
 
 
@@ -291,7 +292,7 @@ def heartbeat_loop() -> None:
             thread_parts = []
             for name, label in (("CheckIn", "CheckIn"), ("ResinMon", "ResinMon"), ("Heartbeat", "Heartbeat")):
                 alive = any(thread.name == name and thread.is_alive() for thread in threading.enumerate())
-                thread_parts.append(f"{label} {'✓' if alive else '✗'}")
+                thread_parts.append(f"{label} {ICON_SUCCESS if alive else ICON_ERROR}")
             locks_text = ", ".join(
                 name for name, lock in (("redeem", redeem_lock), ("checkin", manual_checkin_lock)) if lock.locked()
             ) or "rảnh"

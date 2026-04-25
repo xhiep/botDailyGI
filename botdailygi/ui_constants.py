@@ -38,3 +38,9 @@ STATUS_PENDING = "○"
 PREFIX_SUCCESS = "✓"
 PREFIX_ERROR = "✗"
 PREFIX_INFO = "•"
+
+# ABYSS/COMBAT ICONS (minimal)
+ICON_DAMAGE = "•"  # Simplified from ⚔
+ICON_SHIELD = "○"
+ICON_KILL = "✗"
+ICON_ENERGY = "•"  # Simplified from ✨

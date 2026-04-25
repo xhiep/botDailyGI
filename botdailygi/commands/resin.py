@@ -7,6 +7,7 @@ from botdailygi.commands.common import HINT_RESIN, hint_for
 from botdailygi.commands.helpers import active_accounts, parallel_account_map
 from botdailygi.i18n import t
 from botdailygi.renderers.text import account_heading, display_name as fmt_display_name, md_code, meter_bar
+from botdailygi.ui_constants import ICON_SUCCESS, ICON_ERROR
 from botdailygi.runtime.state import check_change_cooldown, mark_change, now_vn, resin_wake_event
 from botdailygi.services.hoyolab import get_account_info_cached, get_realtime_notes
 from botdailygi.services.progress import ProgressMessage
@@ -55,7 +56,7 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     daily_done = data.get("finished_task_num", 0)
     daily_total = data.get("total_task_num", 4)
     reward = t("resin.claimed", chat_id) if data.get("is_extra_task_reward_received", False) else t("resin.unclaimed", chat_id)
-    daily_icon = "✓" if daily_done >= daily_total else "✗"
+    daily_icon = ICON_SUCCESS if daily_done >= daily_total else ICON_ERROR
     title_name = fmt_display_name(nickname, account_name, multi=multi)
     lines = [
         t("resin.title", chat_id, nickname=title_name),

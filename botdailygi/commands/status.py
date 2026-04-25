@@ -26,7 +26,7 @@ from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.resin_config import get_account_resin_config, load_resin_config
 from botdailygi.services.schedule import get_versions
 from botdailygi.services.status_cache import get_status_snapshot, set_status_snapshot
-from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, STATUS_ACTIVE, STATUS_INACTIVE
+from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, STATUS_ACTIVE, STATUS_INACTIVE, ICON_WARNING
 
 
 def _checkin_line(chat_id, cookies: dict) -> str | None:
@@ -64,7 +64,7 @@ def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
     else:
         retcode = data.get("retcode", -1)
         message = data.get("message", "")
-        payload["lines"].append(f"  ⚠️ Resin: lỗi rc={retcode}" + (f" ({message})" if message else ""))
+        payload["lines"].append(f"  {ICON_WARNING} Resin: lỗi rc={retcode}" + (f" ({message})" if message else ""))
     line = _checkin_line(chat_id, cookies)
     if line:
         payload["lines"].append("  " + line)
@@ -103,7 +103,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
             if uid and uid in seen_uids:
                 for line in snapshot.get("lines", []):
                     if "Resin:" in line or "Nhựa:" in line:
-                        lines.append(f"  ⚠️ Resin: xem tài khoản {md_code(seen_uids[uid])} (cùng UID)")
+                        lines.append(f"  {ICON_WARNING} Resin: xem tài khoản {md_code(seen_uids[uid])} (cùng UID)")
                     else:
                         lines.append(line)
             else:
@@ -135,7 +135,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
                 break
     except Exception:
         pass
-    lines.append(divider(12))
+    lines.append(divider(DIVIDER_SHORT))
     alive_map = {thread.name: thread.is_alive() for thread in threading.enumerate()}
     thread_parts = []
     any_dead = False
@@ -145,7 +145,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         thread_parts.append(f"{label} {STATUS_ACTIVE if alive else STATUS_INACTIVE}")
     lines.append("Threads: " + " | ".join(thread_parts))
     if any_dead:
-        lines.append("⚠️ Có background thread đã dừng.")
+        lines.append(f"{ICON_WARNING} Có background thread đã dừng.")
     lock_parts = []
     if redeem_lock.locked():
         lock_parts.append("redeem")
