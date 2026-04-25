@@ -20,6 +20,7 @@ from botdailygi.services.account_import import (
 from botdailygi.services.hoyolab import get_account_info_cached, invalidate_api_cache
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.status_cache import invalidate_status_cache
+from botdailygi.ui_constants import DIVIDER_MEDIUM
 
 
 def cmd_accounts(chat_id, _arg: str = "") -> None:
@@ -27,7 +28,7 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
     if not entries:
         send_text(chat_id, t("acct.empty", chat_id))
         return
-    lines = [t("acct.list_header", chat_id, count=len(entries)), divider(20)]
+    lines = [t("acct.list_header", chat_id, count=len(entries)), divider(DIVIDER_MEDIUM)]
     for index, entry in enumerate(entries, 1):
         name = entry.get("name", "?")
         cookie_path = accounts.COOKIES_DIR / entry.get("cookie_file", "")
@@ -45,8 +46,8 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
             status = t("acct.status_no_file", chat_id)
         lines.append(f"{index}. {account_heading(name, icon='🗂️')}\n   {status}")
         if index < len(entries):
-            lines.append(divider(20))
-    lines.append(divider(20))
+            lines.append(divider(DIVIDER_MEDIUM))
+    lines.append(divider(DIVIDER_MEDIUM))
     lines.append(t("acct.list_footer", chat_id))
     send_text(chat_id, "\n".join(lines))
 

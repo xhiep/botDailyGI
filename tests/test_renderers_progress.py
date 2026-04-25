@@ -27,4 +27,4 @@ class RendererProgressTests(unittest.TestCase):
         progress = ProgressMessage(chat_id=123, message_id=1)
         progress.done("Finished")
         sent = send_text.call_args.args[1]
-        self.assertTrue(sent.startswith("✨ Hoàn tất"))
+        self.assertTrue(sent.startswith("✓ Hoàn tất"))

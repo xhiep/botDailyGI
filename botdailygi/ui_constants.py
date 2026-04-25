@@ -1,0 +1,40 @@
+"""UI constants following Apple Design System from DESIGN.md"""
+
+# SPACING SYSTEM (8px base unit)
+SPACING_TINY = 2
+SPACING_XXSMALL = 4
+SPACING_XSMALL = 6
+SPACING_SMALL = 8
+SPACING_MEDIUM = 12
+SPACING_LARGE = 20
+SPACING_XLARGE = 28
+
+# DIVIDER WIDTHS (standardized)
+DIVIDER_SHORT = 12
+DIVIDER_MEDIUM = 18
+DIVIDER_LONG = 24
+
+# METER BAR WIDTHS
+METER_COMPACT = 8
+METER_STANDARD = 10
+METER_WIDE = 12
+
+# ICONS (minimal Apple style)
+ICON_SUCCESS = "✓"
+ICON_ERROR = "✗"
+ICON_WARNING = "⚠"
+ICON_INFO = "•"
+ICON_LOADING = "○"
+
+# SPINNER FRAMES (simplified, Apple-style minimal)
+SPINNER_FRAMES = ("○", "◔", "◑", "◕", "●", "◕", "◑", "◔")
+
+# STATUS INDICATORS
+STATUS_ACTIVE = "✓"
+STATUS_INACTIVE = "✗"
+STATUS_PENDING = "○"
+
+# MESSAGE PREFIXES (minimal)
+PREFIX_SUCCESS = "✓"
+PREFIX_ERROR = "✗"
+PREFIX_INFO = "•"

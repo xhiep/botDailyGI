@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 
 from botdailygi.clients.telegram import edit_text, send_chat_action, send_text
 from botdailygi.runtime.state import progress_lock_for
+from botdailygi.ui_constants import SPINNER_FRAMES, PREFIX_SUCCESS, PREFIX_ERROR
 
 
-_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧")
+_FRAMES = SPINNER_FRAMES
 
 
 @dataclass
@@ -39,7 +40,7 @@ class ProgressMessage:
     def done(self, text: str, *, action: str = "typing") -> None:
         send_chat_action(self.chat_id, action)
         lock = progress_lock_for(self.chat_id)
-        final_text = f"✨ Hoàn tất\n\n{text}"
+        final_text = f"{PREFIX_SUCCESS} Hoàn tất\n\n{text}"
         with lock:
             if self.message_id and edit_text(self.chat_id, self.message_id, final_text):
                 return
@@ -48,7 +49,7 @@ class ProgressMessage:
     def fail(self, text: str, *, action: str = "typing") -> None:
         send_chat_action(self.chat_id, action)
         lock = progress_lock_for(self.chat_id)
-        final_text = f"⚠️ Có lỗi xảy ra\n\n{text}"
+        final_text = f"{PREFIX_ERROR} Có lỗi xảy ra\n\n{text}"
         with lock:
             if self.message_id and edit_text(self.chat_id, self.message_id, final_text):
                 return

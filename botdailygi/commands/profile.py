@@ -16,6 +16,7 @@ from botdailygi.services.hoyolab import (
     get_spiral_abyss,
 )
 from botdailygi.services.progress import ProgressMessage
+from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, DIVIDER_LONG
 
 
 def cmd_uid(chat_id, _arg: str = "") -> None:
@@ -23,7 +24,7 @@ def cmd_uid(chat_id, _arg: str = "") -> None:
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return
-    lines = [t("uid.list_header", chat_id, count=len(items)), divider(12)]
+    lines = [t("uid.list_header", chat_id, count=len(items)), divider(DIVIDER_SHORT)]
     for index, (entry, cookies) in enumerate(items, 1):
         info = get_account_info_cached(cookies)
         name = entry.get("name", "?")
@@ -60,20 +61,20 @@ def _stats_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     lines = [
         t("stats.title", chat_id, nickname=display_name),
         t("stats.uid_region", chat_id, uid=uid, region=region),
-        divider(12),
+        divider(DIVIDER_SHORT),
         f"{t('stats.days', chat_id)} {stats.get('active_day_number', '?')}",
         f"{t('stats.achievement', chat_id)} {stats.get('achievement_number', '?')}",
         f"{t('stats.chars_owned', chat_id)} {stats.get('avatar_number', '?')}",
         f"{t('stats.waypoint', chat_id)} {stats.get('way_point_number', '?')}",
         f"{t('stats.domain', chat_id)} {stats.get('domain_number', '?')}",
-        divider(12),
+        divider(DIVIDER_SHORT),
         t("stats.chests_hdr", chat_id),
         f"{t('stats.chest.luxurious', chat_id)} {stats.get('luxurious_chest_number', '?')}",
         f"{t('stats.chest.precious', chat_id)} {stats.get('precious_chest_number', '?')}",
         f"{t('stats.chest.exquisite', chat_id)} {stats.get('exquisite_chest_number', '?')}",
         f"{t('stats.chest.common', chat_id)} {stats.get('common_chest_number', '?')}",
         f"{t('stats.chest.remarkable', chat_id)} {stats.get('magic_chest_number', '?')}",
-        divider(12),
+        divider(DIVIDER_SHORT),
         t("stats.oculi_hdr", chat_id),
         f"{t('stats.oculi.anemoculus', chat_id)} {stats.get('anemoculus_number', '?')}",
         f"{t('stats.oculi.geoculus', chat_id)} {stats.get('geoculus_number', '?')}",
@@ -84,7 +85,7 @@ def _stats_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     ]
     worlds = data.get("world_explorations", [])
     if worlds:
-        lines.extend([divider(21), t("stats.world_hdr", chat_id)])
+        lines.extend([divider(DIVIDER_LONG), t("stats.world_hdr", chat_id)])
         for world in sorted(worlds, key=lambda item: item.get("exploration_percentage", 0), reverse=True):
             percent = world.get("exploration_percentage", 0) / 10.0
             name = world.get("name", "?")[:16]
@@ -126,7 +127,7 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
     lines = [
         t("chars.title", chat_id, nickname=display_name),
         t("chars.summary", chat_id, uid=uid, five=len(five_star), four=len(four_star), total=len(characters)),
-        divider(12),
+        divider(DIVIDER_SHORT),
     ]
     if five_star:
         lines.append(t("chars.five_hdr", chat_id, count=len(five_star)))
@@ -163,7 +164,7 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
 
     lines.extend(
         [
-            divider(12),
+            divider(DIVIDER_SHORT),
             t("chars.total_bar", chat_id, bar=_bar(element_count)),
             t("chars.five_bar", chat_id, bar=_bar(element_count_5)),
         ]
@@ -258,9 +259,9 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
             start=dt.datetime.fromtimestamp(int(abyss.get("start_time", 0)), VN_TZ).strftime("%d/%m"),
             end=dt.datetime.fromtimestamp(int(abyss.get("end_time", 0)), VN_TZ).strftime("%d/%m/%Y"),
         ),
-            divider(12),
+            divider(DIVIDER_SHORT),
         t("abyss.stats", chat_id, stars=total_star, floor=max_floor, battles=total_battles, wins=total_wins),
-        divider(12),
+        divider(DIVIDER_SHORT),
     ]
     for key, icon in (("damage_rank", "💥"), ("take_damage_rank", "🛡️"), ("kill_rank", "☠️"), ("energy_skill_rank", "✨")):
         top = (abyss.get(key) or [None])[0]
@@ -268,7 +269,7 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
             lines.append(f"{icon} {top.get('value', 0):,}  ← {_char_name(top, live_names)}")
     reveal = abyss.get("reveal_rank", [])
     if reveal:
-        lines.append(divider(21))
+        lines.append(divider(DIVIDER_LONG))
         names = [f"{_char_name(item, live_names)} ×{item.get('value', 0)}" for item in reveal[:5]]
         lines.append("🎭 " + "  |  ".join(names[:3]))
         if len(names) > 3:

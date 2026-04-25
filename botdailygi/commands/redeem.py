@@ -19,6 +19,7 @@ from botdailygi.services.codes import (
 )
 from botdailygi.services.hoyolab import get_account_info_cached, redeem_one
 from botdailygi.services.progress import ProgressMessage
+from botdailygi.ui_constants import DIVIDER_MEDIUM, DIVIDER_LONG
 
 
 def _parallel_account_map(items, fn, *, max_workers: int = 4):
@@ -31,7 +32,7 @@ def _parallel_account_map(items, fn, *, max_workers: int = 4):
 
 def _render_batch_result(chat_id, account_name: str, nickname: str, results: dict) -> str:
     prefix = f"{md_code(account_name)} " if account_name else ""
-    lines = [t("code.redeem.summary", chat_id, prefix=prefix, nickname=md_escape(nickname)), divider(18)]
+    lines = [t("code.redeem.summary", chat_id, prefix=prefix, nickname=md_escape(nickname)), divider(DIVIDER_MEDIUM)]
     if results["ok"]:
         lines.append(t("code.redeem.ok", chat_id, count=len(results["ok"]), codes=", ".join(md_code(code) for code in results["ok"])))
     if results["fail_bl"]:
@@ -134,11 +135,11 @@ def cmd_blacklist(chat_id, _arg: str = "") -> None:
     if not blacklist:
         send_text(chat_id, t("code.bl_empty", chat_id))
         return
-    lines = [t("code.bl_header", chat_id, count=len(blacklist)), divider(20)]
+    lines = [t("code.bl_header", chat_id, count=len(blacklist)), divider(DIVIDER_MEDIUM)]
     for code, reason in sorted(blacklist.items()):
         reason_text = t(reason, chat_id) if reason.startswith("code.reason.") else reason
         lines.append(f"  • {md_code(code)} — {reason_text}")
-    lines.extend([divider(20), t("code.bl_footer", chat_id)])
+    lines.extend([divider(DIVIDER_MEDIUM), t("code.bl_footer", chat_id)])
     send_text(chat_id, "\n".join(lines))
 
 

@@ -26,6 +26,7 @@ from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.resin_config import get_account_resin_config, load_resin_config
 from botdailygi.services.schedule import get_versions
 from botdailygi.services.status_cache import get_status_snapshot, set_status_snapshot
+from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, STATUS_ACTIVE, STATUS_INACTIVE
 
 
 def _checkin_line(chat_id, cookies: dict) -> str | None:
@@ -87,7 +88,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         t("status.host_line", chat_id, host=socket.gethostname(), os="Win" if IS_WINDOWS else "Linux"),
         t("status.time_line", chat_id, time=now_vn().strftime("%H:%M:%S  %d/%m/%Y")),
         t("status.uptime_line", chat_id, uptime=uptime_str()),
-        divider(12),
+        divider(DIVIDER_SHORT),
     ]
     items = active_accounts()
     if not items:
@@ -110,7 +111,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
                     seen_uids[uid] = account_name
                 lines.extend(snapshot.get("lines", []))
             if index < len(items) - 1:
-                lines.append(divider(20))
+                lines.append(divider(DIVIDER_MEDIUM))
     try:
         now = now_vn()
         for version, patch_date in get_versions():
@@ -141,7 +142,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
     for name, label in (("CheckIn", "CheckIn"), ("ResinMon", "ResinMon"), ("Heartbeat", "Heartbeat")):
         alive = alive_map.get(name, False)
         any_dead = any_dead or not alive
-        thread_parts.append(f"{label} {'✓' if alive else '✗'}")
+        thread_parts.append(f"{label} {STATUS_ACTIVE if alive else STATUS_INACTIVE}")
     lines.append("Threads: " + " | ".join(thread_parts))
     if any_dead:
         lines.append("⚠️ Có background thread đã dừng.")

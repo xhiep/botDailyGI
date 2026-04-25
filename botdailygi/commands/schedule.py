@@ -8,6 +8,7 @@ from botdailygi.i18n import t
 from botdailygi.renderers.text import divider
 from botdailygi.runtime.state import VN_TZ, now_vn
 from botdailygi.services.schedule import VERSIONS_FALLBACK, get_current_version, get_versions
+from botdailygi.ui_constants import DIVIDER_LONG
 
 
 def cmd_livestream(chat_id, _arg: str = "") -> None:
@@ -20,7 +21,7 @@ def cmd_livestream(chat_id, _arg: str = "") -> None:
     lines = [
         t("live.title", chat_id),
         t("live.cur_ver", chat_id, ver=current_version),
-        divider(29),
+        divider(DIVIDER_LONG),
     ]
     found_any = False
     for version, patch_date in versions:
@@ -66,7 +67,7 @@ def cmd_livestream(chat_id, _arg: str = "") -> None:
         lines.append(t("live.no_schedule", chat_id))
     lines.extend(
         [
-            divider(29),
+            divider(DIVIDER_LONG),
             t("live.default_time", chat_id, h=STREAM_HOUR, m=STREAM_MINUTE),
         ]
     )
