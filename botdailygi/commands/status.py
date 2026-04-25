@@ -145,26 +145,26 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         thread_parts.append(f"{label} {STATUS_ACTIVE if alive else STATUS_INACTIVE}")
     lines.append("Threads: " + " | ".join(thread_parts))
     if any_dead:
-        lines.append(f"{ICON_WARNING} Có background thread đã dừng.")
+        lines.append(f"{ICON_WARNING} {t('status.thread_dead', chat_id)}")
     lock_parts = []
     if redeem_lock.locked():
         lock_parts.append("redeem")
     if manual_checkin_lock.locked():
         lock_parts.append("checkin")
-    lines.append("Locks: " + (", ".join(lock_parts) if lock_parts else "rảnh"))
+    lines.append("Locks: " + (", ".join(lock_parts) if lock_parts else t('status.locks_idle', chat_id)))
     try:
-        lines.append(f"CmdPool: {command_executor._work_queue.qsize()} lệnh chờ")
+        lines.append(f"CmdPool: {command_executor._work_queue.qsize()} {t('status.cmd_pending', chat_id)}")
     except Exception:
         pass
     try:
         network = get_network_health()
         state_map = {
-            "starting": "đang khởi tạo",
-            "ok": "ổn định",
-            "degraded_dns": f"mất DNS x{network.get('poll_dns_fail_streak', 0)}",
-            "degraded_other": f"lỗi polling x{network.get('poll_fail_streak', 0)}",
+            "starting": t('status.net_starting', chat_id),
+            "ok": t('status.net_ok', chat_id),
+            "degraded_dns": t('status.net_dns_fail', chat_id, count=network.get('poll_dns_fail_streak', 0)),
+            "degraded_other": t('status.net_poll_fail', chat_id, count=network.get('poll_fail_streak', 0)),
         }
-        lines.append("Network: Telegram poll " + state_map.get(network.get("telegram_poll_state"), "không rõ"))
+        lines.append("Network: Telegram poll " + state_map.get(network.get("telegram_poll_state"), t('status.net_unknown', chat_id)))
     except Exception:
         pass
     try:
@@ -174,12 +174,12 @@ def cmd_status(chat_id, _arg: str = "") -> None:
             for entry, _cookies in items:
                 account_name = entry.get("name", "?")
                 account_cfg = get_account_resin_config(config, account_name)
-                state_text = "bật" if account_cfg.get("enabled", True) else "tắt"
+                state_text = t('status.cfg_enabled', chat_id) if account_cfg.get("enabled", True) else t('status.cfg_disabled', chat_id)
                 resin_parts.append(f"{md_code(account_name)}={state_text}/{account_cfg.get('threshold', 200)}")
             lines.append("ResinCfg: " + ", ".join(resin_parts))
         else:
             default_cfg = config.get("default", {})
-            state_text = "bật" if default_cfg.get("enabled", True) else "tắt"
+            state_text = t('status.cfg_enabled', chat_id) if default_cfg.get("enabled", True) else t('status.cfg_disabled', chat_id)
             lines.append(f"ResinCfg: {state_text}, ngưỡng={default_cfg.get('threshold', 200)}")
     except Exception:
         pass

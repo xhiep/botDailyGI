@@ -47,7 +47,7 @@ def cmd_checkin(chat_id, _arg: str = "") -> None:
         invalidate_status_cache()
         invalidate_api_cache()
         results = do_checkin_for_all(label=t("checkin.manual.label", chat_id), max_retries=1)
-        progress.done(f"• Check-in\n{divider(DIVIDER_MEDIUM)}\n" + "\n".join(_render_checkin_result(chat_id, result) for result in results))
+        progress.done(f"{t('checkin.header', chat_id)}\n{divider(DIVIDER_MEDIUM)}\n" + "\n".join(_render_checkin_result(chat_id, result) for result in results))
     except Exception as exc:
         progress.fail(t("gen.error", chat_id, e=exc))
     finally:

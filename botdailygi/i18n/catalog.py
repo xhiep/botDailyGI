@@ -12,6 +12,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "gen.no_login":        {"vi": "⚠ Chưa có tài khoản — dùng /addaccount <tên>", "en": "⚠ No account found — use /addaccount <name>"},
     "gen.no_uid":          {"vi": "✗ Không lấy được UID", "en": "✗ Could not get UID"},
     "gen.no_uid_login":    {"vi": "✗ Không lấy được UID\n• Thử /addaccount nếu cookie hết hạn", "en": "✗ Could not get UID\n• Try /addaccount if cookie expired"},
+    "gen.render_error":    {"vi": "Lỗi hiển thị kết quả", "en": "Error rendering result"},
 
     # ── Multi-account ──────────────────────────────────────────────────────
     "acct.empty":              {"vi": "⚠ Chưa có tài khoản nào. Dùng /addaccount <tên> rồi gửi JSON cookie để thêm.", "en": "⚠ No accounts yet. Use /addaccount <name> and upload a cookie JSON to add one."},
@@ -94,6 +95,16 @@ STRINGS: dict[str, dict[str, str]] = {
     "status.resin_dup_uid":{"vi": "Resin: xem tài khoản {account} (cùng UID)", "en": "Resin: see account {account} (same UID)"},
     "status.live_future":  {"vi": "○ Livestream v{ver}: {time} (còn {days} ngày)", "en": "○ Livestream v{ver}: {time} (in {days} days)"},
     "status.live_today":   {"vi": "○ Livestream v{ver}: hôm nay lúc {time}", "en": "○ Livestream v{ver}: today at {time}"},
+    "status.thread_dead":  {"vi": "Có background thread đã dừng.", "en": "Some background threads have stopped."},
+    "status.locks_idle":   {"vi": "rảnh", "en": "idle"},
+    "status.cmd_pending":  {"vi": "lệnh chờ", "en": "pending"},
+    "status.net_starting": {"vi": "đang khởi tạo", "en": "starting"},
+    "status.net_ok":       {"vi": "ổn định", "en": "stable"},
+    "status.net_dns_fail": {"vi": "mất DNS x{count}", "en": "DNS fail x{count}"},
+    "status.net_poll_fail":{"vi": "lỗi polling x{count}", "en": "polling error x{count}"},
+    "status.net_unknown":  {"vi": "không rõ", "en": "unknown"},
+    "status.cfg_enabled":  {"vi": "bật", "en": "on"},
+    "status.cfg_disabled": {"vi": "tắt", "en": "off"},
 
     # ── /resin ─────────────────────────────────────────────────────────────
     "resin.fetching":      {"vi": "• Đang lấy trạng thái nhựa...", "en": "• Fetching resin status..."},
@@ -136,6 +147,7 @@ STRINGS: dict[str, dict[str, str]] = {
     # ── /checkin ──────────────────────────────────────────────────────────
     "checkin.busy":        {"vi": "○ Đang có lệnh /checkin đang chạy rồi.\n• Chờ xíu nhé!", "en": "○ /checkin is already running.\n• Hold on a sec!"},
     "checkin.checking":    {"vi": "○ Đang kiểm tra điểm danh...", "en": "○ Checking check-in status..."},
+    "checkin.header":      {"vi": "• Điểm danh", "en": "• Check-in"},
     "checkin.manual.label":{"vi": "Thủ công", "en": "Manual"},
     "checkin.already":     {"vi": "• Hôm nay đã điểm danh rồi! (Tích lũy: {total} ngày)", "en": "• Already checked in today! (Accumulated: {total} days)"},
     "checkin.success":     {"vi": "✓ Điểm danh thành công!", "en": "✓ Check-in successful!"},

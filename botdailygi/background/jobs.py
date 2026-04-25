@@ -40,7 +40,7 @@ def _render_checkin_lines(results: list[dict]) -> str:
             lines.append(_render_checkin_result(TELEGRAM_CHAT_ID, item))
         except Exception as exc:
             log.warning(f"[checkin] Failed to render result for {item.get('name', '?')}: {exc}")
-            lines.append(f"{ICON_WARNING} {item.get('name', '?')}: Lỗi hiển thị kết quả")
+            lines.append(f"{ICON_WARNING} {item.get('name', '?')}: {t('gen.render_error', TELEGRAM_CHAT_ID)}")
     return "\n".join(lines)
 
 
@@ -295,7 +295,7 @@ def heartbeat_loop() -> None:
                 thread_parts.append(f"{label} {ICON_SUCCESS if alive else ICON_ERROR}")
             locks_text = ", ".join(
                 name for name, lock in (("redeem", redeem_lock), ("checkin", manual_checkin_lock)) if lock.locked()
-            ) or "rảnh"
+            ) or t('status.locks_idle', TELEGRAM_CHAT_ID)
             send_text(
                 TELEGRAM_CHAT_ID,
                 t(
