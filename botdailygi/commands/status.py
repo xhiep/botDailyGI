@@ -64,7 +64,7 @@ def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
     else:
         retcode = data.get("retcode", -1)
         message = data.get("message", "")
-        payload["lines"].append(f"  {ICON_WARNING} Resin: lỗi rc={retcode}" + (f" ({message})" if message else ""))
+        payload["lines"].append(f"  {ICON_WARNING} {t('status.resin_error', chat_id, rc=retcode, msg=message)}")
     line = _checkin_line(chat_id, cookies)
     if line:
         payload["lines"].append("  " + line)
@@ -102,8 +102,8 @@ def cmd_status(chat_id, _arg: str = "") -> None:
             uid = snapshot.get("uid")
             if uid and uid in seen_uids:
                 for line in snapshot.get("lines", []):
-                    if "Resin:" in line or "Nhựa:" in line:
-                        lines.append(f"  {ICON_WARNING} Resin: xem tài khoản {md_code(seen_uids[uid])} (cùng UID)")
+                    if ICON_WARNING in line and ("resin_bar" in line.lower() or "resin_error" in line.lower()):
+                        lines.append(f"  {ICON_WARNING} {t('status.resin_dup_uid', chat_id, account=md_code(seen_uids[uid]))}")
                     else:
                         lines.append(line)
             else:

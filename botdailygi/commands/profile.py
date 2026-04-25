@@ -260,7 +260,7 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
             start=dt.datetime.fromtimestamp(int(abyss.get("start_time", 0)), VN_TZ).strftime("%d/%m"),
             end=dt.datetime.fromtimestamp(int(abyss.get("end_time", 0)), VN_TZ).strftime("%d/%m/%Y"),
         ),
-            divider(DIVIDER_SHORT),
+        divider(DIVIDER_SHORT),
         t("abyss.stats", chat_id, stars=total_star, floor=max_floor, battles=total_battles, wins=total_wins),
         divider(DIVIDER_SHORT),
     ]

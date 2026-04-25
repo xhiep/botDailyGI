@@ -90,6 +90,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "status.checkin_line": {"vi": "○ Điểm danh: {icon} ({total} ngày)", "en": "○ Check-in: {icon} ({total} days)"},
     "status.checked":      {"vi": "✓ Đã điểm", "en": "✓ Checked"},
     "status.not_checked":  {"vi": "✗ Chưa điểm", "en": "✗ Not checked"},
+    "status.resin_error":  {"vi": "Resin: lỗi rc={rc} ({msg})", "en": "Resin: error rc={rc} ({msg})"},
+    "status.resin_dup_uid":{"vi": "Resin: xem tài khoản {account} (cùng UID)", "en": "Resin: see account {account} (same UID)"},
     "status.live_future":  {"vi": "○ Livestream v{ver}: {time} (còn {days} ngày)", "en": "○ Livestream v{ver}: {time} (in {days} days)"},
     "status.live_today":   {"vi": "○ Livestream v{ver}: hôm nay lúc {time}", "en": "○ Livestream v{ver}: today at {time}"},
 
