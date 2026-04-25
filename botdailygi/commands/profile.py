@@ -31,10 +31,10 @@ def cmd_uid(chat_id, _arg: str = "") -> None:
         if info:
             uid, nickname, region = info
             lines.append(
-                f"{index}. {account_heading(name, icon='🪪')}\n   {t('uid.info', chat_id, nickname=md_escape(nickname), uid=uid, region=md_escape(region))}"
+                f"{index}. {account_heading(name)}\n   {t('uid.info', chat_id, nickname=md_escape(nickname), uid=uid, region=md_escape(region))}"
             )
         else:
-            lines.append(f"{index}. {account_heading(name, icon='🪪')}\n   {t('acct.status_cookie_bad', chat_id)}")
+            lines.append(f"{index}. {account_heading(name)}\n   {t('acct.status_cookie_bad', chat_id)}")
     send_text(chat_id, "\n".join(lines))
 
 
@@ -263,7 +263,7 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
         t("abyss.stats", chat_id, stars=total_star, floor=max_floor, battles=total_battles, wins=total_wins),
         divider(DIVIDER_SHORT),
     ]
-    for key, icon in (("damage_rank", "💥"), ("take_damage_rank", "🛡️"), ("kill_rank", "☠️"), ("energy_skill_rank", "✨")):
+    for key, icon in (("damage_rank", "⚔"), ("take_damage_rank", "○"), ("kill_rank", "✗"), ("energy_skill_rank", "✨")):
         top = (abyss.get(key) or [None])[0]
         if top:
             lines.append(f"{icon} {top.get('value', 0):,}  ← {_char_name(top, live_names)}")
@@ -271,11 +271,11 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
     if reveal:
         lines.append(divider(DIVIDER_LONG))
         names = [f"{_char_name(item, live_names)} ×{item.get('value', 0)}" for item in reveal[:5]]
-        lines.append("🎭 " + "  |  ".join(names[:3]))
+        lines.append("• " + "  |  ".join(names[:3]))
         if len(names) > 3:
             lines.append("   " + "  |  ".join(names[3:]))
     footer_key = "abyss.footer_cur" if schedule_type == 1 else "abyss.footer_prev"
-    lines.extend([divider(21), t(footer_key, chat_id)])
+    lines.extend([divider(DIVIDER_LONG), t(footer_key, chat_id)])
     return "\n".join(lines), None
 
 

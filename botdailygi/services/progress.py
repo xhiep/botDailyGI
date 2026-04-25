@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from botdailygi.clients.telegram import edit_text, send_chat_action, send_text
+from botdailygi.i18n import t
 from botdailygi.runtime.state import progress_lock_for
 from botdailygi.ui_constants import SPINNER_FRAMES, PREFIX_SUCCESS, PREFIX_ERROR
 
@@ -19,7 +20,7 @@ class ProgressMessage:
     def _framed(self, text: str) -> str:
         frame = _FRAMES[self.frame_index % len(_FRAMES)]
         self.frame_index += 1
-        return f"{text}\n\n{frame} Đang xử lý..."
+        return f"{text}\n\n{frame} {t('progress.processing', self.chat_id)}"
 
     @classmethod
     def start(cls, chat_id, text: str, *, action: str = "typing") -> "ProgressMessage":
@@ -40,7 +41,7 @@ class ProgressMessage:
     def done(self, text: str, *, action: str = "typing") -> None:
         send_chat_action(self.chat_id, action)
         lock = progress_lock_for(self.chat_id)
-        final_text = f"{PREFIX_SUCCESS} Hoàn tất\n\n{text}"
+        final_text = f"{PREFIX_SUCCESS} {t('progress.done', self.chat_id)}\n\n{text}"
         with lock:
             if self.message_id and edit_text(self.chat_id, self.message_id, final_text):
                 return
@@ -49,7 +50,7 @@ class ProgressMessage:
     def fail(self, text: str, *, action: str = "typing") -> None:
         send_chat_action(self.chat_id, action)
         lock = progress_lock_for(self.chat_id)
-        final_text = f"{PREFIX_ERROR} Có lỗi xảy ra\n\n{text}"
+        final_text = f"{PREFIX_ERROR} {t('progress.error', self.chat_id)}\n\n{text}"
         with lock:
             if self.message_id and edit_text(self.chat_id, self.message_id, final_text):
                 return

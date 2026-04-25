@@ -37,22 +37,22 @@ def cmd_livestream(chat_id, _arg: str = "") -> None:
             found_any = True
             if diff_live < 0:
                 live_text = t("live.stream_passed", chat_id, time=stream_time.strftime("%H:%M %d/%m"))
-                live_icon = "✅"
+                live_icon = "✓"
             elif diff_live == 0:
                 live_text = t("live.stream_today", chat_id, time=stream_time.strftime("%H:%M"))
-                live_icon = "🔴"
+                live_icon = "●"
             else:
                 live_text = t("live.stream_future", chat_id, time=stream_time.strftime("%H:%M  %d/%m/%Y"), days=diff_live)
-                live_icon = "📺"
+                live_icon = "○"
             if diff_patch < 0:
                 patch_text = t("live.patch_running", chat_id, time=patch_time.strftime("%d/%m/%Y"))
-                patch_icon = "🟢"
+                patch_icon = "✓"
             elif diff_patch == 0:
                 patch_text = t("live.patch_today", chat_id, time=patch_time.strftime("%d/%m/%Y"))
-                patch_icon = "🔥"
+                patch_icon = "●"
             else:
                 patch_text = t("live.patch_future", chat_id, time=patch_time.strftime("%d/%m/%Y"), days=diff_patch)
-                patch_icon = "🗓"
+                patch_icon = "○"
             lines.extend(
                 [
                     t("live.ver_header", chat_id, ver=version),

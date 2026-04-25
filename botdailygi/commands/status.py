@@ -186,7 +186,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
     try:
         size = LOG_FILE.stat().st_size
         size_text = f"{size / 1024 / 1024:.1f} MB" if size >= 1024 * 1024 else f"{size // 1024} KB"
-        lines.append(f"📄 bot.log: {size_text} / 2 MB")
+        lines.append(f"• bot.log: {size_text} / 2 MB")
     except Exception as exc:
         log.debug(f"[status] Cannot read log file size: {exc}")
     progress.done("\n".join(lines), action="typing")

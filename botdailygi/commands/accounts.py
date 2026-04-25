@@ -44,7 +44,7 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
             status = t("acct.status_no_cookie", chat_id)
         else:
             status = t("acct.status_no_file", chat_id)
-        lines.append(f"{index}. {account_heading(name, icon='🗂️')}\n   {status}")
+        lines.append(f"{index}. {account_heading(name)}\n   {status}")
         if index < len(entries):
             lines.append(divider(DIVIDER_MEDIUM))
     lines.append(divider(DIVIDER_MEDIUM))

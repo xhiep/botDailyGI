@@ -69,6 +69,11 @@ STRINGS: dict[str, dict[str, str]] = {
     "bot.saving_cookie":   {"vi": "💾 Đang lưu cookie...", "en": "💾 Saving cookie..."},
     "bot.cancelled":       {"vi": "✅ Đã huỷ", "en": "✅ Cancelled"},
 
+    # ── Progress messages ─────────────────────────────────────────────────
+    "progress.processing": {"vi": "Đang xử lý...", "en": "Processing..."},
+    "progress.done":       {"vi": "Hoàn tất", "en": "Done"},
+    "progress.error":      {"vi": "Có lỗi xảy ra", "en": "Error occurred"},
+
     # ── /status header (hardcoded lines) ────────────────────────────────
     "status.header":       {"vi": "🧭 Trạng thái bot",          "en": "🧭 Bot status"},
     "status.fetching":     {"vi": "✨ Đang gom trạng thái bot, tài khoản và nhựa...", "en": "✨ Gathering bot, account, and resin status..."},
