@@ -16,12 +16,22 @@ from botdailygi.services.hoyolab import (
     get_genshin_stats,
     get_spiral_abyss,
 )
+from botdailygi.services.history import append_history
 from botdailygi.services.progress import ProgressMessage
+from botdailygi.services.user_settings import get_default_account, resolve_alias
 from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, DIVIDER_LONG
 
 
-def cmd_uid(chat_id, _arg: str = "") -> None:
-    items = active_accounts()
+def _selected_accounts(arg: str = ""):
+    target = (arg or "").strip() or get_default_account()
+    if not target:
+        return active_accounts()
+    target = resolve_alias(target).lower()
+    return [item for item in active_accounts() if item[0].get("name", "").lower() == target]
+
+
+def cmd_uid(chat_id, arg: str = "") -> None:
+    items = _selected_accounts(arg)
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return
@@ -58,33 +68,52 @@ def _stats_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
         )
     data = payload.get("data", {})
     stats = data.get("stats", {})
+    worlds = data.get("world_explorations", [])
+    avg_explore = 0
+    if worlds:
+        avg_explore = sum(int(item.get("exploration_percentage", 0)) for item in worlds) / (10.0 * len(worlds))
+    append_history(
+        "stats",
+        account_name,
+        {
+            "uid": uid,
+            "days": stats.get("active_day_number", "?"),
+            "achievements": stats.get("achievement_number", "?"),
+            "characters": stats.get("avatar_number", "?"),
+        },
+    )
     display_name = fmt_display_name(nickname, account_name, multi=multi)
     lines = [
         t("stats.title", chat_id, nickname=display_name),
         t("stats.uid_region", chat_id, uid=uid, region=region),
-        divider(DIVIDER_SHORT),
-        f"{t('stats.days', chat_id)} {stats.get('active_day_number', '?')}",
-        f"{t('stats.achievement', chat_id)} {stats.get('achievement_number', '?')}",
-        f"{t('stats.chars_owned', chat_id)} {stats.get('avatar_number', '?')}",
-        f"{t('stats.waypoint', chat_id)} {stats.get('way_point_number', '?')}",
-        f"{t('stats.domain', chat_id)} {stats.get('domain_number', '?')}",
-        divider(DIVIDER_SHORT),
-        t("stats.chests_hdr", chat_id),
-        f"{t('stats.chest.luxurious', chat_id)} {stats.get('luxurious_chest_number', '?')}",
-        f"{t('stats.chest.precious', chat_id)} {stats.get('precious_chest_number', '?')}",
-        f"{t('stats.chest.exquisite', chat_id)} {stats.get('exquisite_chest_number', '?')}",
-        f"{t('stats.chest.common', chat_id)} {stats.get('common_chest_number', '?')}",
-        f"{t('stats.chest.remarkable', chat_id)} {stats.get('magic_chest_number', '?')}",
-        divider(DIVIDER_SHORT),
-        t("stats.oculi_hdr", chat_id),
-        f"{t('stats.oculi.anemoculus', chat_id)} {stats.get('anemoculus_number', '?')}",
-        f"{t('stats.oculi.geoculus', chat_id)} {stats.get('geoculus_number', '?')}",
-        f"{t('stats.oculi.electroculus', chat_id)} {stats.get('electroculus_number', '?')}",
-        f"{t('stats.oculi.dendroculus', chat_id)} {stats.get('dendroculus_number', '?')}",
-        f"{t('stats.oculi.hydroculus', chat_id)} {stats.get('hydroculus_number', '?')}",
-        f"{t('stats.oculi.pyroculus', chat_id)} {stats.get('pyroculus_number', '?')}",
     ]
-    worlds = data.get("world_explorations", [])
+    if worlds:
+        lines.append(f"Avg exploration: {avg_explore:.1f}%")
+    lines.extend(
+        [
+            divider(DIVIDER_SHORT),
+            f"{t('stats.days', chat_id)} {stats.get('active_day_number', '?')}",
+            f"{t('stats.achievement', chat_id)} {stats.get('achievement_number', '?')}",
+            f"{t('stats.chars_owned', chat_id)} {stats.get('avatar_number', '?')}",
+            f"{t('stats.waypoint', chat_id)} {stats.get('way_point_number', '?')}",
+            f"{t('stats.domain', chat_id)} {stats.get('domain_number', '?')}",
+            divider(DIVIDER_SHORT),
+            t("stats.chests_hdr", chat_id),
+            f"{t('stats.chest.luxurious', chat_id)} {stats.get('luxurious_chest_number', '?')}",
+            f"{t('stats.chest.precious', chat_id)} {stats.get('precious_chest_number', '?')}",
+            f"{t('stats.chest.exquisite', chat_id)} {stats.get('exquisite_chest_number', '?')}",
+            f"{t('stats.chest.common', chat_id)} {stats.get('common_chest_number', '?')}",
+            f"{t('stats.chest.remarkable', chat_id)} {stats.get('magic_chest_number', '?')}",
+            divider(DIVIDER_SHORT),
+            t("stats.oculi_hdr", chat_id),
+            f"{t('stats.oculi.anemoculus', chat_id)} {stats.get('anemoculus_number', '?')}",
+            f"{t('stats.oculi.geoculus', chat_id)} {stats.get('geoculus_number', '?')}",
+            f"{t('stats.oculi.electroculus', chat_id)} {stats.get('electroculus_number', '?')}",
+            f"{t('stats.oculi.dendroculus', chat_id)} {stats.get('dendroculus_number', '?')}",
+            f"{t('stats.oculi.hydroculus', chat_id)} {stats.get('hydroculus_number', '?')}",
+            f"{t('stats.oculi.pyroculus', chat_id)} {stats.get('pyroculus_number', '?')}",
+        ]
+    )
     if worlds:
         lines.extend([divider(DIVIDER_LONG), t("stats.world_hdr", chat_id)])
         for world in sorted(worlds, key=lambda item: item.get("exploration_percentage", 0), reverse=True):
@@ -95,8 +124,8 @@ def _stats_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     return "\n".join(lines)
 
 
-def cmd_stats(chat_id, _arg: str = "") -> None:
-    items = active_accounts()
+def cmd_stats(chat_id, arg: str = "") -> None:
+    items = _selected_accounts(arg)
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return
@@ -173,8 +202,8 @@ def _characters_block(chat_id, account_name: str, cookies: dict, multi: bool) ->
     return "\n".join(lines)
 
 
-def cmd_characters(chat_id, _arg: str = "") -> None:
-    items = active_accounts()
+def cmd_characters(chat_id, arg: str = "") -> None:
+    items = _selected_accounts(arg)
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return
@@ -281,11 +310,19 @@ def _abyss_block(chat_id, account_name: str, cookies: dict, multi: bool, schedul
 
 
 def cmd_abyss(chat_id, arg: str = "") -> None:
-    items = active_accounts()
+    tokens = (arg or "").split()
+    account_name = None
+    schedule_token = ""
+    for token in tokens:
+        if token.lower() in {"2", "prev", "previous"}:
+            schedule_token = token.lower()
+        else:
+            account_name = token
+    items = _selected_accounts(account_name or "")
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return
-    schedule_type = 2 if (arg or "").strip() in {"2", "prev", "previous"} else 1
+    schedule_type = 2 if schedule_token in {"2", "prev", "previous"} else 1
     label = t("abyss.label_prev", chat_id) if schedule_type == 2 else t("abyss.label_cur", chat_id)
     progress = ProgressMessage.start(chat_id, t("abyss.fetching", chat_id, label=label), action="upload_photo")
     multi = len(items) > 1

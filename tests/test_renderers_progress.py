@@ -10,7 +10,7 @@ from botdailygi.services.progress import ProgressMessage
 class RendererProgressTests(unittest.TestCase):
     def test_divider_and_meter_bar(self):
         self.assertEqual(divider(5), "─────")
-        self.assertEqual(meter_bar(50, 100, width=10), "█████░░░░░")
+        self.assertEqual(meter_bar(50, 100, width=10), "●●●●●○○○○○")
 
     @patch("botdailygi.services.progress.send_text", return_value=1)
     @patch("botdailygi.services.progress.send_chat_action", return_value=True)

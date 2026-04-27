@@ -6,6 +6,7 @@ from botdailygi.renderers.text import divider
 from botdailygi.runtime.state import manual_checkin_lock
 from botdailygi.services.hoyolab import invalidate_api_cache
 from botdailygi.services.checkin import do_checkin_for_all
+from botdailygi.services.history import append_history
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.status_cache import invalidate_status_cache
 from botdailygi.ui_constants import DIVIDER_MEDIUM
@@ -47,6 +48,8 @@ def cmd_checkin(chat_id, _arg: str = "") -> None:
         invalidate_status_cache()
         invalidate_api_cache()
         results = do_checkin_for_all(label=t("checkin.manual.label", chat_id), max_retries=1)
+        for result in results:
+            append_history("checkin", result.get("label", "checkin"), result)
         progress.done(f"{t('checkin.header', chat_id)}\n{divider(DIVIDER_MEDIUM)}\n" + "\n".join(_render_checkin_result(chat_id, result) for result in results))
     except Exception as exc:
         progress.fail(t("gen.error", chat_id, e=exc))

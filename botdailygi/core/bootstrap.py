@@ -4,7 +4,7 @@ import socket
 import threading
 import time
 
-from botdailygi.background.jobs import auto_checkin_loop, heartbeat_loop, resin_monitor_loop
+from botdailygi.background.jobs import auto_checkin_loop, heartbeat_loop, reminder_loop, resin_monitor_loop
 from botdailygi.clients.http import HTTP, IS_WINDOWS
 from botdailygi.clients.telegram import base_url, get_updates, send_text
 from botdailygi.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
@@ -45,6 +45,7 @@ def start_background_threads() -> None:
     threading.Thread(target=auto_checkin_loop, daemon=True, name="CheckIn").start()
     threading.Thread(target=resin_monitor_loop, daemon=True, name="ResinMon").start()
     threading.Thread(target=heartbeat_loop, daemon=True, name="Heartbeat").start()
+    threading.Thread(target=reminder_loop, daemon=True, name="Reminder").start()
 
 
 def send_startup_message() -> None:

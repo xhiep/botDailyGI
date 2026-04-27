@@ -9,6 +9,7 @@ from botdailygi.i18n import t
 from botdailygi.renderers.text import account_heading, display_name as fmt_display_name, md_code, meter_bar
 from botdailygi.ui_constants import ICON_SUCCESS, ICON_ERROR
 from botdailygi.runtime.state import check_change_cooldown, mark_change, now_vn, resin_wake_event
+from botdailygi.services.history import append_history
 from botdailygi.services.hoyolab import get_account_info_cached, get_realtime_notes
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.resin_config import (
@@ -17,6 +18,15 @@ from botdailygi.services.resin_config import (
     save_resin_config,
     set_account_resin_config,
 )
+from botdailygi.services.user_settings import get_default_account, resolve_alias
+
+
+def _selected_accounts(arg: str = ""):
+    target = (arg or "").strip() or get_default_account()
+    if not target:
+        return active_accounts()
+    target = resolve_alias(target).lower()
+    return [item for item in active_accounts() if item[0].get("name", "").lower() == target]
 
 
 def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
@@ -66,6 +76,11 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
         t("resin.daily", chat_id, done=daily_done, total=daily_total, icon=daily_icon),
         t("resin.reward", chat_id, status=reward),
     ]
+    append_history(
+        "resin",
+        account_name,
+        {"uid": uid, "current": current, "max": maximum, "daily": daily_done, "expeditions": expedition_done},
+    )
     transformer = data.get("transformer", {})
     if transformer.get("obtained"):
         key = "resin.transformer_rdy" if transformer.get("recovery_time", {}).get("reached") else "resin.transformer_wait"
@@ -73,8 +88,8 @@ def _resin_block(chat_id, account_name: str, cookies: dict, multi: bool) -> str:
     return "\n".join(lines)
 
 
-def cmd_resin(chat_id, _arg: str = "") -> None:
-    items = active_accounts()
+def cmd_resin(chat_id, arg: str = "") -> None:
+    items = _selected_accounts(arg)
     if not items:
         send_text(chat_id, t("gen.no_login", chat_id))
         return

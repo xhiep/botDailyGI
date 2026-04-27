@@ -4,11 +4,11 @@ from botdailygi.ui_constants import DIVIDER_SHORT, METER_STANDARD
 
 
 def divider(width: int = DIVIDER_SHORT, *, char: str = "─") -> str:
-    """Create a subtle divider line. Default width reduced from 20 to 12 for Apple-style restraint."""
+    """Create a short divider for compact Telegram layouts."""
     return char * max(width, 1)
 
 
-def meter_bar(current: int | float, maximum: int | float, *, width: int = METER_STANDARD, filled: str = "█", empty: str = "░") -> str:
+def meter_bar(current: int | float, maximum: int | float, *, width: int = METER_STANDARD, filled: str = "●", empty: str = "○") -> str:
     if maximum <= 0:
         return empty * width
     ratio = max(0.0, min(float(current) / float(maximum), 1.0))

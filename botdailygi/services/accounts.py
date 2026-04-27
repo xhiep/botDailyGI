@@ -148,3 +148,35 @@ def remove_account_entry(name: str) -> tuple[bool, Path | str]:
         return False, f'Account "{name}" not found'
     write_accounts(new_accounts)
     return True, COOKIES_DIR / found["cookie_file"]
+
+
+def rename_account_entry(old_name: str, new_name: str) -> tuple[bool, str]:
+    accounts = read_accounts()
+    if any(item.get("name", "").lower() == new_name.lower() for item in accounts):
+        return False, f'Account "{new_name}" already exists'
+    renamed = False
+    new_accounts = []
+    for entry in accounts:
+        if entry.get("name", "").lower() == old_name.lower():
+            renamed = True
+            new_entry = dict(entry)
+            new_entry["name"] = new_name
+            slug = slugify_account_name(new_name)
+            old_cookie = COOKIES_DIR / entry.get("cookie_file", "")
+            new_cookie_file = f"{slug}.json"
+            new_cookie = COOKIES_DIR / new_cookie_file
+            if old_cookie.exists() and old_cookie != new_cookie:
+                try:
+                    new_cookie.parent.mkdir(parents=True, exist_ok=True)
+                    old_cookie.replace(new_cookie)
+                except Exception as exc:
+                    return False, f'Cannot rename cookie file: {exc}'
+            new_entry["slug"] = slug
+            new_entry["cookie_file"] = new_cookie_file
+            new_accounts.append(new_entry)
+        else:
+            new_accounts.append(entry)
+    if not renamed:
+        return False, f'Account "{old_name}" not found'
+    write_accounts(new_accounts)
+    return True, ""

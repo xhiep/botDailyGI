@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
 
-from botdailygi.clients.telegram import download_file, get_file, send_text
+from botdailygi.clients.telegram import download_file, get_file, send_buttons, send_text
 from botdailygi.i18n import t
 from botdailygi.renderers.text import account_heading, divider, md_code, md_escape
 from botdailygi.runtime.logging import log
@@ -20,6 +19,7 @@ from botdailygi.services.account_import import (
 from botdailygi.services.hoyolab import get_account_info_cached, invalidate_api_cache
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.status_cache import invalidate_status_cache
+from botdailygi.services.user_settings import get_default_account
 from botdailygi.ui_constants import DIVIDER_MEDIUM
 
 
@@ -28,8 +28,22 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
     if not entries:
         send_text(chat_id, t("acct.empty", chat_id))
         return
-    lines = [t("acct.list_header", chat_id, count=len(entries)), divider(DIVIDER_MEDIUM)]
-    for index, entry in enumerate(entries, 1):
+    raw = (_arg or "").strip()
+    page = 1
+    query = ""
+    if raw.isdigit():
+        page = max(1, int(raw))
+    elif raw:
+        query = raw.lower()
+    page_size = 5
+    filtered = [entry for entry in entries if not query or query in entry.get("name", "").lower()]
+    start = (page - 1) * page_size
+    page_entries = filtered[start : start + page_size]
+    lines = [t("acct.list_header", chat_id, count=len(filtered)), divider(DIVIDER_MEDIUM)]
+    default_name = get_default_account().lower()
+    buttons: list[list[dict]] = []
+    for local_index, entry in enumerate(page_entries, 1):
+        index = start + local_index
         name = entry.get("name", "?")
         cookie_path = accounts.COOKIES_DIR / entry.get("cookie_file", "")
         cookies = accounts.read_cookie_file(cookie_path)
@@ -44,12 +58,19 @@ def cmd_accounts(chat_id, _arg: str = "") -> None:
             status = t("acct.status_no_cookie", chat_id)
         else:
             status = t("acct.status_no_file", chat_id)
-        lines.append(f"{index}. {account_heading(name)}\n   {status}")
-        if index < len(entries):
+        prefix = "✓ " if default_name and default_name == name.lower() else ""
+        lines.append(f"{index}. {prefix}{account_heading(name)}\n   {status}")
+        buttons.append(
+            [
+                {"text": f"Use {name}", "callback_data": f"acctset:{name}"},
+            ]
+        )
+        if local_index < len(page_entries):
             lines.append(divider(DIVIDER_MEDIUM))
     lines.append(divider(DIVIDER_MEDIUM))
     lines.append(t("acct.list_footer", chat_id))
-    send_text(chat_id, "\n".join(lines))
+    buttons.append([{"text": "Clear default", "callback_data": "acctclear"}])
+    send_buttons(chat_id, "\n".join(lines), buttons)
 
 
 def cmd_addaccount(chat_id, arg: str = "") -> None:
@@ -129,10 +150,8 @@ def handle_cookie_document(chat_id, document: dict) -> None:
     if not telegram_file or not telegram_file.get("file_path"):
         progress.fail(t("acct.import.bad_file", chat_id))
         return
-    fd, temp_name = tempfile.mkstemp(prefix="cookie_", suffix=".json")
-    os.close(fd)
-    Path(temp_name).unlink(missing_ok=True)
-    temp_path = Path(temp_name)
+    with tempfile.NamedTemporaryFile(prefix="cookie_", suffix=".json", delete=False) as handle:
+        temp_path = Path(handle.name)
     try:
         if not download_file(telegram_file["file_path"], temp_path):
             progress.fail(t("acct.import.download_fail", chat_id))

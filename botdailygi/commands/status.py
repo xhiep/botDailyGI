@@ -22,20 +22,21 @@ from botdailygi.runtime.state import (
     uptime_str,
 )
 from botdailygi.services.hoyolab import check_cookie_status, get_account_info_cached, get_checkin_info, get_realtime_notes
+from botdailygi.services.history import append_history
 from botdailygi.services.progress import ProgressMessage
 from botdailygi.services.resin_config import get_account_resin_config, load_resin_config
 from botdailygi.services.schedule import get_versions
 from botdailygi.services.status_cache import get_status_snapshot, set_status_snapshot
+from botdailygi.services.user_settings import get_default_account, resolve_alias
 from botdailygi.ui_constants import DIVIDER_SHORT, DIVIDER_MEDIUM, STATUS_ACTIVE, STATUS_INACTIVE, ICON_WARNING
 
 
-def _checkin_line(chat_id, cookies: dict) -> str | None:
-    try:
-        info = get_checkin_info(cookies).get("data", {})
-        icon = t("status.checked", chat_id) if info.get("is_sign") else t("status.not_checked", chat_id)
-        return t("status.checkin_line", chat_id, icon=icon, total=info.get("total_sign_day", "?"))
-    except Exception:
-        return None
+def _selected_accounts(arg: str = ""):
+    target = (arg or "").strip() or get_default_account()
+    if not target:
+        return active_accounts()
+    target = resolve_alias(target).lower()
+    return [item for item in active_accounts() if item[0].get("name", "").lower() == target]
 
 
 def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
@@ -61,13 +62,26 @@ def _build_account_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
             else t("status.eta_at", chat_id, time=(now_vn() + dt.timedelta(seconds=eta_seconds)).strftime("%H:%M %d/%m"))
         )
         payload["lines"].append("  " + t("status.resin_bar", chat_id, bar=bar, cur=current, max=maximum, eta=eta_text))
+        append_history(
+            "status",
+            entry.get("name", "?"),
+            {"uid": uid, "current": current, "max": maximum, "eta_seconds": eta_seconds},
+        )
     else:
         retcode = data.get("retcode", -1)
         message = data.get("message", "")
         payload["lines"].append(f"  {ICON_WARNING} {t('status.resin_error', chat_id, rc=retcode, msg=message)}")
-    line = _checkin_line(chat_id, cookies)
-    if line:
-        payload["lines"].append("  " + line)
+    try:
+        checkin_info = get_checkin_info(cookies).get("data", {})
+        icon = t("status.checked", chat_id) if checkin_info.get("is_sign") else t("status.not_checked", chat_id)
+        payload["lines"].append("  " + t("status.checkin_line", chat_id, icon=icon, total=checkin_info.get("total_sign_day", "?")))
+        append_history(
+            "checkin",
+            entry.get("name", "?"),
+            {"uid": uid, "checked": bool(checkin_info.get("is_sign")), "days": checkin_info.get("total_sign_day", "?")},
+        )
+    except Exception:
+        pass
     return payload
 
 
@@ -81,7 +95,7 @@ def _cached_snapshot(chat_id, entry: dict, cookies: dict) -> dict:
     return payload
 
 
-def cmd_status(chat_id, _arg: str = "") -> None:
+def cmd_status(chat_id, arg: str = "") -> None:
     progress = ProgressMessage.start(chat_id, t("status.fetching", chat_id), action="typing")
     lines = [
         t("status.header", chat_id),
@@ -90,7 +104,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         t("status.uptime_line", chat_id, uptime=uptime_str()),
         divider(DIVIDER_SHORT),
     ]
-    items = active_accounts()
+    items = _selected_accounts(arg)
     if not items:
         lines.append(t("gen.no_login", chat_id))
     else:
@@ -180,7 +194,7 @@ def cmd_status(chat_id, _arg: str = "") -> None:
         else:
             default_cfg = config.get("default", {})
             state_text = t('status.cfg_enabled', chat_id) if default_cfg.get("enabled", True) else t('status.cfg_disabled', chat_id)
-            lines.append(f"ResinCfg: {state_text}, ngưỡng={default_cfg.get('threshold', 200)}")
+            lines.append(f"ResinCfg: {state_text}, threshold={default_cfg.get('threshold', 200)}")
     except Exception:
         pass
     try:

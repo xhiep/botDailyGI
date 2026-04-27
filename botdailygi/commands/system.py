@@ -18,7 +18,25 @@ def cmd_start(chat_id, _arg: str = "") -> None:
 
 
 def cmd_help(chat_id, _arg: str = "") -> None:
-    send_text(chat_id, t("help.body", chat_id))
+    body = t("help.body", chat_id)
+    body += (
+        "\n\n• DAILY WORKSPACE\n"
+        "/dashboard          - all accounts at a glance\n"
+        "/overview [name]    - default account or selected account\n"
+        "/history [name] [n] - recent snapshots\n"
+        "/default <name>     - set the default account\n"
+        "/alias <a> <name>   - short name for an account\n"
+        "/alias remove <a>   - remove an alias\n"
+        "\n• ADMIN\n"
+        "/backup             - export runtime zip\n"
+        "/restore            - restore from backup zip\n"
+        "/renameaccount a b  - rename an account\n"
+        "/health             - system health\n"
+        "/logs [n]           - recent logs\n"
+        "/notify             - notification rules\n"
+        "/bulk status resin  - run commands in sequence"
+    )
+    send_text(chat_id, body)
 
 
 def cmd_lang(chat_id, arg: str = "") -> None:

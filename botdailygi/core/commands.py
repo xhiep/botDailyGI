@@ -4,6 +4,7 @@ import dataclasses
 
 from botdailygi.clients.http import HTTP
 from botdailygi.clients.telegram import base_url
+from botdailygi.commands.advanced import cmd_alias, cmd_backup, cmd_bulk, cmd_dashboard, cmd_default, cmd_health, cmd_history, cmd_logs, cmd_notify, cmd_overview, cmd_renameaccount, cmd_restore
 from botdailygi.commands.accounts import cmd_accounts, cmd_addaccount, cmd_removeaccount
 from botdailygi.commands.checkin import cmd_checkin
 from botdailygi.commands.profile import cmd_abyss, cmd_characters, cmd_stats, cmd_uid
@@ -26,6 +27,18 @@ class CommandSpec:
 COMMANDS: dict[str, CommandSpec] = {
     "/start": CommandSpec("/start", cmd_start, False),
     "/help": CommandSpec("/help", cmd_help, False),
+    "/dashboard": CommandSpec("/dashboard", cmd_dashboard, True),
+    "/overview": CommandSpec("/overview", cmd_overview, True),
+    "/history": CommandSpec("/history", cmd_history, False),
+    "/backup": CommandSpec("/backup", cmd_backup, False),
+    "/restore": CommandSpec("/restore", cmd_restore, False),
+    "/default": CommandSpec("/default", cmd_default, False),
+    "/alias": CommandSpec("/alias", cmd_alias, False),
+    "/renameaccount": CommandSpec("/renameaccount", cmd_renameaccount, False),
+    "/health": CommandSpec("/health", cmd_health, False),
+    "/logs": CommandSpec("/logs", cmd_logs, False),
+    "/notify": CommandSpec("/notify", cmd_notify, False),
+    "/bulk": CommandSpec("/bulk", cmd_bulk, False),
     "/lang": CommandSpec("/lang", cmd_lang, False),
     "/status": CommandSpec("/status", cmd_status, True),
     "/livestream": CommandSpec("/livestream", cmd_livestream, False),
@@ -64,6 +77,18 @@ COMMANDS_VI = [
     {"command": "removeaccount", "description": "Xoa tai khoan: /removeaccount <ten>"},
     {"command": "lang", "description": "Doi ngon ngu: /lang vi hoac /lang en"},
     {"command": "help", "description": "Xem toan bo danh sach lenh"},
+    {"command": "dashboard", "description": "Tong hop status tat ca account"},
+    {"command": "overview", "description": "Xem tong quan 1 account hoac default"},
+    {"command": "history", "description": "Lich su resin/checkin/stats"},
+    {"command": "backup", "description": "Sao luu runtime thanh file zip"},
+    {"command": "restore", "description": "Khoi phuc runtime tu file zip"},
+    {"command": "default", "description": "Dat account mac dinh"},
+    {"command": "alias", "description": "Dat alias cho account"},
+    {"command": "renameaccount", "description": "Doi ten account"},
+    {"command": "health", "description": "Trang thai he thong"},
+    {"command": "logs", "description": "Lay log gan nhat"},
+    {"command": "notify", "description": "Quan ly rule thong bao"},
+    {"command": "bulk", "description": "Chay nhieu lenh lien tiep"},
 ]
 
 COMMANDS_EN = [
@@ -85,6 +110,18 @@ COMMANDS_EN = [
     {"command": "removeaccount", "description": "Remove an account"},
     {"command": "lang", "description": "Change language: /lang vi or /lang en"},
     {"command": "help", "description": "Show full command list"},
+    {"command": "dashboard", "description": "Aggregate status for all accounts"},
+    {"command": "overview", "description": "Overview for one account or default"},
+    {"command": "history", "description": "History for resin/check-in/stats"},
+    {"command": "backup", "description": "Export runtime as a zip backup"},
+    {"command": "restore", "description": "Restore runtime from a zip backup"},
+    {"command": "default", "description": "Set the default account"},
+    {"command": "alias", "description": "Create or list account aliases"},
+    {"command": "renameaccount", "description": "Rename an account"},
+    {"command": "health", "description": "System health report"},
+    {"command": "logs", "description": "Fetch recent log lines"},
+    {"command": "notify", "description": "Manage notification rules"},
+    {"command": "bulk", "description": "Run multiple commands in sequence"},
 ]
 
 

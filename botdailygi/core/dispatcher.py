@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from botdailygi.clients.telegram import answer_callback, send_text
+from botdailygi.commands.advanced import handle_restore_document
 from botdailygi.commands.accounts import handle_cookie_document
 from botdailygi.commands.system import cmd_help
 from botdailygi.config import TELEGRAM_CHAT_ID
@@ -36,6 +37,8 @@ def handle_document(chat_id, document: dict) -> None:
     if not authorized(chat_id):
         send_text(chat_id, t("gen.unauthorized", chat_id))
         return
+    if handle_restore_document(chat_id, document):
+        return
     handle_cookie_document(chat_id, document)
 
 
@@ -56,6 +59,29 @@ def handle_callback(callback_id: str, chat_id, data: str) -> None:
         set_lang(chat_id, selected)
         invalidate_status_cache()
         answer_callback(callback_id, t("lang.changed_cb", chat_id, name=t(f"lang.{selected}_name", chat_id)))
+        cmd_help(chat_id)
+        return
+    if data.startswith("acctset:"):
+        from botdailygi.services.user_settings import set_default_account
+        from botdailygi.services.accounts import get_account_entry
+        from botdailygi.services.status_cache import invalidate_status_cache as _invalidate_status_cache
+
+        account_name = data.split(":", 1)[1]
+        if not get_account_entry(account_name):
+            answer_callback(callback_id, t("gen.no_login", chat_id))
+            return
+        set_default_account(account_name)
+        _invalidate_status_cache()
+        answer_callback(callback_id, f"Default: {account_name}")
+        cmd_help(chat_id)
+        return
+    if data == "acctclear":
+        from botdailygi.services.user_settings import clear_default_account
+        from botdailygi.services.status_cache import invalidate_status_cache as _invalidate_status_cache
+
+        clear_default_account()
+        _invalidate_status_cache()
+        answer_callback(callback_id, "Default cleared")
         cmd_help(chat_id)
         return
     answer_callback(callback_id, t("bot.unknown_cb", chat_id))

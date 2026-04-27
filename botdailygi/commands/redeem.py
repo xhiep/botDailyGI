@@ -130,15 +130,29 @@ def cmd_redeemall(chat_id, _arg: str = "") -> None:
         redeem_lock.release()
 
 
-def cmd_blacklist(chat_id, _arg: str = "") -> None:
+def cmd_blacklist(chat_id, arg: str = "") -> None:
     blacklist = load_blacklist()
     if not blacklist:
         send_text(chat_id, t("code.bl_empty", chat_id))
         return
-    lines = [t("code.bl_header", chat_id, count=len(blacklist)), divider(DIVIDER_MEDIUM)]
-    for code, reason in sorted(blacklist.items()):
+    raw = (arg or "").strip()
+    page = 1
+    query = ""
+    if raw.isdigit():
+        page = max(1, int(raw))
+    elif raw:
+        query = raw.lower()
+    page_size = 10
+    items = [(code, reason) for code, reason in sorted(blacklist.items()) if not query or query in code.lower() or query in str(reason).lower()]
+    start = (page - 1) * page_size
+    page_items = items[start : start + page_size]
+    lines = [t("code.bl_header", chat_id, count=len(items)), divider(DIVIDER_MEDIUM)]
+    for code, reason in page_items:
         reason_text = t(reason, chat_id) if reason.startswith("code.reason.") else reason
         lines.append(f"  • {md_code(code)} — {reason_text}")
+    if len(items) > start + page_size:
+        lines.append(divider(DIVIDER_MEDIUM))
+        lines.append(f"Page {page}/{(len(items) - 1) // page_size + 1}")
     lines.extend([divider(DIVIDER_MEDIUM), t("code.bl_footer", chat_id)])
     send_text(chat_id, "\n".join(lines))
 

@@ -9,15 +9,15 @@ SPACING_MEDIUM = 12
 SPACING_LARGE = 20
 SPACING_XLARGE = 28
 
-# DIVIDER WIDTHS (standardized)
-DIVIDER_SHORT = 12
-DIVIDER_MEDIUM = 18
-DIVIDER_LONG = 24
+# DIVIDER WIDTHS (standardized, intentionally restrained)
+DIVIDER_SHORT = 8
+DIVIDER_MEDIUM = 12
+DIVIDER_LONG = 16
 
 # METER BAR WIDTHS
-METER_COMPACT = 8
-METER_STANDARD = 10
-METER_WIDE = 12
+METER_COMPACT = 6
+METER_STANDARD = 8
+METER_WIDE = 10
 
 # ICONS (minimal Apple style)
 ICON_SUCCESS = "✓"
@@ -26,8 +26,8 @@ ICON_WARNING = "⚠"
 ICON_INFO = "•"
 ICON_LOADING = "○"
 
-# SPINNER FRAMES (simplified, Apple-style minimal)
-SPINNER_FRAMES = ("○", "◔", "◑", "◕", "●", "◕", "◑", "◔")
+# SPINNER FRAMES (subtle, single-dot motion)
+SPINNER_FRAMES = ("○", "◔", "◑", "◕")
 
 # STATUS INDICATORS
 STATUS_ACTIVE = "✓"

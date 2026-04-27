@@ -29,6 +29,8 @@ from botdailygi.services.resin_config import (
     save_resin_config,
     set_account_resin_config,
 )
+from botdailygi.services.schedule import next_livestream
+from botdailygi.services.user_settings import get_notification_settings
 
 
 def _render_checkin_lines(results: list[dict]) -> str:
@@ -315,3 +317,47 @@ def heartbeat_loop() -> None:
             log.warning(f"[heartbeat] Loop error: {exc}")
         heartbeat_wake_event.wait(timeout=interval_hours * 3600)
         heartbeat_wake_event.clear()
+
+
+def reminder_loop() -> None:
+    sent_keys: set[str] = set()
+    log.info("Reminder thread ready")
+    while True:
+        try:
+            notifications = get_notification_settings()
+            now = now_vn()
+            account_items = accounts.all_account_cookies()
+            if notifications.get("checkin", {}).get("enabled", True) and account_items:
+                for hour in (9, 21):
+                    slot = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+                    if 0 <= (slot - now).total_seconds() <= 1800:
+                        key = f"checkin:{slot:%Y-%m-%d %H}"
+                        if key in sent_keys:
+                            continue
+                        pending = []
+                        for entry, cookies in account_items:
+                            info = get_checkin_info(cookies).get("data", {})
+                            if not info.get("is_sign"):
+                                pending.append(entry.get("name", "?"))
+                        if pending:
+                            send_text(
+                                TELEGRAM_CHAT_ID,
+                                "Check-in reminder: " + ", ".join(pending),
+                            )
+                            sent_keys.add(key)
+            if notifications.get("schedule", {}).get("enabled", True):
+                version, stream_time = next_livestream()
+                if version and stream_time:
+                    delta_hours = (stream_time - now).total_seconds() / 3600.0
+                    if 0 <= delta_hours <= 24:
+                        key = f"stream:{version}:{stream_time:%Y-%m-%d}"
+                        if key not in sent_keys:
+                            send_text(
+                                TELEGRAM_CHAT_ID,
+                                f"Livestream reminder: v{version} at {stream_time:%H:%M %d/%m}",
+                            )
+                            sent_keys.add(key)
+            time.sleep(900)
+        except Exception as exc:
+            log.warning(f"[reminder] Loop error: {exc}")
+            time.sleep(900)
